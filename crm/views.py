@@ -374,3 +374,15 @@ def calendar_events_api(request):
         })
 
     return JsonResponse(events, safe=False)
+
+
+def health_check(request):
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        db_ok = "Green"
+    except Exception as e:
+        db_ok = f"Red (Error: {str(e)})"
+    
+    return HttpResponse(f"Server Status: OK\nDatabase Status: {db_ok}", content_type="text/plain")

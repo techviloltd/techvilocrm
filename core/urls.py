@@ -24,7 +24,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 from crm.views import (
     generate_invoice_pdf, dashboard, kanban_board,
-    update_kanban_item, calendar_view, calendar_events_api, quick_add_task
+    update_kanban_item, calendar_view, calendar_events_api, quick_add_task,
+    health_check
 )
 
 urlpatterns = [
@@ -48,4 +49,5 @@ urlpatterns = [
     path('kanban/', kanban_board, name='kanban_board'),
     path('kanban/update/<str:item_type>/<int:item_id>/', update_kanban_item, name='update_kanban_item'),
     path('kanban/quick-add/', quick_add_task, name='quick_add_task'),
+    path('health-check/', health_check, name='health_check'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

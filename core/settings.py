@@ -32,6 +32,10 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-h=9ubjiyepmfg32+^fzh11v^2o
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+CSRF_TRUSTED_ORIGINS = [
+    'https://techvilocrm.onrender.com',
+    'https://*.onrender.com'
+]
 LOGIN_URL = '/admin/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 
