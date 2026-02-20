@@ -18,7 +18,8 @@ The `urlpatterns` list routes URLs to views. For more information please see:
 
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
 from crm.views import (
@@ -27,6 +28,9 @@ from crm.views import (
 )
 
 urlpatterns = [
+    # Root Redirect
+    path('', RedirectView.as_view(url='/dashboard/', permanent=True)),
+
     # Django Admin Panel
     path('admin/', admin.site.urls),
 
