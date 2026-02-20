@@ -1,0 +1,431 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{{ income_expense_dataset|json_script:"js-data-1" }}
+{{ lead_dataset|json_script:"js-data-2" }}
+{{ monthly_labels|json_script:"js-monthly-labels" }}
+{{ monthly_income|json_script:"js-monthly-income" }}
+{{ monthly_expense|json_script:"js-monthly-expense" }}
+<style>
+    html,
+    body {
+        background-color: #f4f5f7 !important;
+    }
+
+    .ds-snr {
+        --b: #1f3bb3;
+        --t: #1f1f1f;
+        --m: #8f92a1;
+        --g: #f4f5f7;
+        --w: #fff;
+        --r: 16px;
+        font-family: 'Manrope', sans-serif;
+        color: var(--t);
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 30px;
+    }
+
+    .k-grd {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .s-crd {
+        background: var(--w);
+        border-radius: var(--r);
+        padding: 25px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e4e9f2;
+    }
+
+    .s-v {
+        font-size: 32px;
+        font-weight: 800;
+    }
+
+    .s-l {
+        font-size: 13px;
+        color: var(--m);
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+    }
+
+    .c-rw {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .ch-ct {
+        position: relative;
+        height: 280px;
+    }
+
+    .b-rw {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 20px;
+    }
+
+    .sn-tb {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .sn-tb th {
+        text-align: left;
+        padding: 14px 18px;
+        font-size: 11px;
+        color: var(--m);
+        border-bottom: 1px solid #eee;
+        background: #f9fafb !important;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .sn-tb td {
+        padding: 16px 18px;
+        font-size: 14px;
+        border-bottom: 1px solid #f1f5f9;
+        background: var(--w) !important;
+        vertical-align: middle;
+    }
+
+    .av-c {
+        width: 38px;
+        height: 38px;
+        background: var(--b);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+    }
+
+    .t-e {
+        text-align: right !important;
+    }
+
+    @media (max-width: 1200px) {
+
+        .c-rw,
+        .b-rw {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+<div class="ds-snr">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom: 30px;">
+        <div>
+            <h1 style="font-size:28px;font-weight:800;margin:0;">Good Morning, {{user.username}}</h1>
+            <p style="color:var(--m);margin:5px 0 0 0;">CRM Pipeline Overview</p>
+        </div>
+        <a href="/kanban/"
+            style="background: var(--b); color: white; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(31, 59, 179, 0.2);">
+            <span>🚀</span> Open Kanban Board
+        </a>
+    </div>
+    <div class="k-grd">
+        <div class="s-crd">
+            <div class="s-l">Leads</div>
+            <div class="s-v">{{total_leads}}</div>
+        </div>
+        <div class="s-crd">
+            <div class="s-l">Projects</div>
+            <div class="s-v">{{active_projects}}</div>
+        </div>
+        <div class="s-crd">
+            <div class="s-l">Clients</div>
+            <div class="s-v">{{total_clients}}</div>
+        </div>
+        <div class="s-crd" style="border-left: 4px solid #ef4444;">
+            <div class="s-l" style="color: #ef4444;">Overdue</div>
+            <div class="s-v" style="color: #ef4444;">{{overdue_count}}</div>
+        </div>
+    </div>
+    <div class="c-rw">
+        <div class="s-crd">
+            <div style="font-weight:700;margin-bottom:8px;font-size:15px;">📊 Revenue Overview <span
+                    style="font-size:11px;font-weight:500;color:#8f92a1;">Last 6 Months</span></div>
+            <!-- Summary mini-stats -->
+            <div style="display:flex;gap:12px;margin-bottom:16px;">
+                <div
+                    style="flex:1;background:#f0fdf4;border-radius:10px;padding:10px 14px;border-left:3px solid #22c55e;">
+                    <div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;">Income</div>
+                    <div style="font-size:18px;font-weight:800;color:#15803d;">৳{{total_income|floatformat:0}}</div>
+                </div>
+                <div
+                    style="flex:1;background:#fef2f2;border-radius:10px;padding:10px 14px;border-left:3px solid #ef4444;">
+                    <div style="font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;">Expense</div>
+                    <div style="font-size:18px;font-weight:800;color:#b91c1c;">৳{{total_expense|floatformat:0}}</div>
+                </div>
+                <div
+                    style="flex:1;background:#eff6ff;border-radius:10px;padding:10px 14px;border-left:3px solid #3b82f6;">
+                    <div style="font-size:11px;font-weight:700;color:#2563eb;text-transform:uppercase;">Net Profit</div>
+                    <div style="font-size:18px;font-weight:800;color:#1d4ed8;">৳{{net_profit|floatformat:0}}</div>
+                </div>
+            </div>
+            <div class="ch-ct" style="height:260px;"><canvas id="r1"></canvas></div>
+        </div>
+        <div class="s-crd">
+            <div style="font-weight:700;margin-bottom:15px;">Sales</div>
+            <div class="ch-ct" style="height:250px;"><canvas id="s1"></canvas></div>
+        </div>
+    </div>
+    <div class="b-rw">
+        <div class="s-crd">
+            <div style="font-weight:700;margin-bottom:20px;">Recent Activity</div>
+            <div style="overflow-x:auto;">
+                <table class="sn-tb">
+                    <thead>
+                        <tr>
+                            <th>Member</th>
+                            <th>Action</th>
+                            <th class="t-e">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for i in recent_interactions %}
+                        <tr>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:12px;">
+                                    <div class="av-c">{{i.created_by.username|slice:":1"|upper}}</div>
+                                    <div>
+                                        <div style="font-weight:800;">{{i.created_by.username}}</div>
+                                        <div style="font-size:11px;color:var(--m);">{{i.created_by.email|default:"-"}}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-weight:700;">{{i.get_interaction_type_display}}</div>
+                                <div style="font-size:12px;color:var(--m);">{{i.client.name}}{{i.lead.source}}</div>
+                            </td>
+                            <td class="t-e">
+                                <div style="font-weight:700;">{{i.created_at|date:"M d"}}</div>
+                                <div style="font-size:11px;color:var(--m);">{{i.created_at|date:"h:i A"}}</div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" style="text-align:center;padding:30px;">Empty</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="s-crd">
+            <div style="font-weight:700;margin-bottom:20px; display: flex; align-items: center; gap: 10px;">
+                <span>✅</span>
+                {% if user.is_superuser or user.groups.all.0.name == 'Manager' %}Task Deadlines{% else %}My Upcoming
+                Tasks{% endif %}
+            </div>
+
+            {# Overdue section if any #}
+            {% if overdue_tasks %}
+            <div style="margin-bottom: 15px;">
+                <div
+                    style="font-size: 11px; font-weight: 800; color: #ef4444; text-transform: uppercase; margin-bottom: 10px;">
+                    🔴 Overdue</div>
+                {% for t in overdue_tasks %}
+                <div
+                    style="padding:10px; background: #fff1f2; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid #ef4444;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <div style="font-weight:700; font-size: 13px;">{{t.task_name}}</div>
+                        <div style="font-size: 11px; font-weight: 800; color: #ef4444;">{{t.due_date|date:"M d"}}</div>
+                    </div>
+                    <div style="font-size: 11px; color: var(--m);">{{t.project.project_name}}</div>
+                </div>
+                {% endfor %}
+            </div>
+            <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 15px;">
+            {% endif %}
+
+            {% for t in upcoming_tasks %}
+            <div
+                style="padding:10px 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between; align-items: center;">
+                <div>
+                    <div style="font-weight:700; font-size: 14px;">{{t.task_name}}</div>
+                    <div style="font-size:11px;color:var(--m);">{{t.project.project_name}}</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-weight:800;color:var(--b); font-size: 12px;">{{t.due_date|date:"D"}}</div>
+                    <div style="font-size: 10px; color: var(--m);">{{t.due_date|date:"M d"}}</div>
+                </div>
+            </div>
+            {% empty %}
+            {% if not overdue_tasks %}
+            <div style="text-align:center;color:var(--m);padding:30px;">
+                <div style="font-size: 24px; margin-bottom: 10px;">🎉</div>
+                All caught up!
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{# ── KPI WIDGET ─────────────────────────────────────────────────────── #}
+<div class="ds-snr" style="margin-top:0;padding-top:0;">
+    <div class="s-crd" style="margin-bottom:30px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div style="font-weight:800;font-size:16px;">📊 KPI — {{ kpi_month }}</div>
+            <a href="/admin/crm/kpitarget/" style="font-size:12px;font-weight:700;color:#6366f1;text-decoration:none;">
+                {% if is_manager %}Manage Targets →{% else %}View Full KPI →{% endif %}
+            </a>
+        </div>
+
+        {% if kpi_widget_data %}
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
+            {% for card in kpi_widget_data %}
+            {% with pct=card.overall_pct %}
+            <div style="border:1px solid #f1f5f9;border-radius:12px;padding:14px;background:#fafbff;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                    <div style="font-weight:700;font-size:14px;color:#1e293b;">{{ card.username }}</div>
+                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;color:white;
+                    background:{% if pct >= 80 %}#22c55e{% elif pct >= 50 %}#f59e0b{% else %}#ef4444{% endif %};">
+                        {{ pct }}%
+                    </span>
+                </div>
+                {% for m in card.metrics %}
+                <div style="margin-bottom:8px;">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
+                        <span style="color:#64748b;">{{ m.label }}</span>
+                        <span style="font-weight:700;color:#334155;">{{ m.actual }}/{{ m.target }}</span>
+                    </div>
+                    <div style="height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;">
+                        <div
+                            style="height:6px;border-radius:3px;width:{{ m.pct }}%;
+                        background:{% if m.pct >= 80 %}#22c55e{% elif m.pct >= 50 %}#f59e0b{% else %}#ef4444{% endif %};">
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endwith %}
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <div style="text-align:center;padding:30px 20px;color:#94a3b8;">
+            <div style="font-size:36px;margin-bottom:8px;">📋</div>
+            <div style="font-weight:600;color:#64748b;font-size:14px;">
+                {% if is_manager %}
+                No KPI targets set for {{ kpi_month }}.
+                <a href="/admin/crm/kpitarget/add/" style="color:#6366f1;font-weight:700;text-decoration:none;">Set
+                    targets →</a>
+                {% else %}
+                No KPI targets for this month yet. Ask your manager to set them.
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    const d1 = JSON.parse(document.getElementById('js-data-1').textContent);
+    const d2 = JSON.parse(document.getElementById('js-data-2').textContent);
+    const mLabels = JSON.parse(document.getElementById('js-monthly-labels').textContent);
+    const mIncome = JSON.parse(document.getElementById('js-monthly-income').textContent);
+    const mExpense = JSON.parse(document.getElementById('js-monthly-expense').textContent);
+
+    Chart.defaults.font.family = 'Manrope';
+
+    // ── Interactive Monthly Revenue Chart ──────────────────────────────
+    new Chart(document.getElementById('r1'), {
+        type: 'bar',
+        data: {
+            labels: mLabels,
+            datasets: [
+                {
+                    label: 'Income',
+                    data: mIncome,
+                    backgroundColor: 'rgba(34,197,94,0.85)',
+                    borderRadius: 6,
+                    borderSkipped: false,
+                },
+                {
+                    label: 'Expense',
+                    data: mExpense,
+                    backgroundColor: 'rgba(239,68,68,0.80)',
+                    borderRadius: 6,
+                    borderSkipped: false,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: { font: { weight: '700', size: 12 }, usePointStyle: true, pointStyle: 'circle' }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ' ৳' + ctx.parsed.y.toLocaleString()
+                    },
+                    backgroundColor: '#1e293b',
+                    titleColor: '#94a3b8',
+                    bodyColor: '#f1f5f9',
+                    padding: 12,
+                    cornerRadius: 8,
+                }
+            },
+            layout: { padding: { left: 8 } },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        font: { weight: '600', size: 11 },
+                        color: '#6b7280',
+                        maxRotation: 0,
+                        minRotation: 0,
+                        autoSkip: false,
+                    }
+                },
+                y: {
+                    grid: { color: '#f1f5f9' },
+                    ticks: {
+                        callback: function (v) {
+                            if (v >= 1000) return (v / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+                            return v;
+                        },
+                        font: { size: 12, weight: '700' },
+                        padding: 10,
+                        maxTicksLimit: 6,
+                    },
+                    beginAtZero: true,
+                    grace: '5%',
+                }
+            }
+        }
+    });
+
+    // ── Lead Doughnut ─────────────────────────────────────────────────
+    new Chart(document.getElementById('s1'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Cold', 'Warm', 'Hot', 'Converted'],
+            datasets: [{ data: d2, backgroundColor: ['#e4e9f2', '#ffc100', '#ff5252', '#11c15b'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+</script>
+{% endblock %}

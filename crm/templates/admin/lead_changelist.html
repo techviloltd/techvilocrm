@@ -1,0 +1,107 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+    {% if today_follow_ups > 0 %}
+    <div style="background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-family: sans-serif; display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 20px;">🔔</span>
+        <strong>Attention:</strong> You have <strong>{{ today_follow_ups }}</strong> follow-ups scheduled for today!
+        <a href="?next_follow_up__year={{ now|date:'Y' }}&next_follow_up__month={{ now|date:'m' }}&next_follow_up__day={{ now|date:'d' }}" style="margin-left: auto; text-decoration: underline; color: #856404;">View All</a>
+    </div>
+    {% else %}
+    <div style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-family: sans-serif;">
+        ✅ No follow-ups scheduled for today. Good job!
+    </div>
+    {% endif %}
+
+    <div style="display: flex; gap: 20px; margin-bottom: 20px; font-family: sans-serif; align-items: flex-start;">
+        
+        <div style="flex: 2; display: flex; gap: 15px;">
+            <div style="flex: 1; background: #6c757d; color: white; padding: 15px; border-radius: 8px; text-align: center;">
+                <h4 style="margin: 0;">Total Leads</h4>
+                <p style="font-size: 20px; font-weight: bold; margin: 10px 0;">{{ total_leads }}</p>
+            </div>
+            <div style="flex: 1; background: #28a745; color: white; padding: 15px; border-radius: 8px; text-align: center;">
+                <h4 style="margin: 0;">Converted</h4>
+                <p style="font-size: 20px; font-weight: bold; margin: 10px 0;">{{ converted_leads }}</p>
+            </div>
+            <div style="flex: 1; background: #17a2b8; color: white; padding: 15px; border-radius: 8px; text-align: center;">
+                <h4 style="margin: 0;">Conversion Rate</h4>
+                <p style="font-size: 20px; font-weight: bold; margin: 10px 0;">{{ conversion_rate }}%</p>
+            </div>
+        </div>
+
+        <div style="flex: 1; background: rgb(12, 104, 223); color: white; padding: 15px; border-radius: 8px; min-width: 250px;">
+            <h3 style="margin-top: 0; font-size: 16px; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 8px;">🏆 Top Performing Staff</h3>
+            <table width="100%" style="border-collapse: collapse; margin-top: 5px; font-size: 14px;">
+                <tr style="background: rgba(230, 121, 19, 0.9);">
+                    <th style="padding: 5px; border-bottom: 1px solid rgba(255,255,255,0.2);">Name</th>
+                    <th style="padding: 5px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: right;">Count</th>
+                </tr>
+                {% for staff in staff_performance %}
+                <tr>
+                    <td style="padding: 5px; border-bottom: 1px solid rgba(255,255,255,0.1);">{{ staff.assigned_to__username|default:"Unassigned" }}</td>
+                    <td style="padding: 5px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: right; font-weight: bold;">{{ staff.total }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2" style="padding: 10px; text-align: center;">No conversions.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <div style="background: white; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h3 style="margin-top: 0; color: #333;">📈 Techvilo Revenue Growth</h3>
+        <div style="height: 250px;">
+            <canvas id="revenueChart"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            
+            // Labels and Data passing safely
+            const labels = {{ chart_labels|safe|default:"[]" }};
+            const data = {{ chart_data|safe|default:"[]" }};
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Billed ($)',
+                        data: data,
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#007bff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        });
+    </script>
+
+    {{ block.super }}
+{% endblock %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <li>
+        <a href="import-csv/" class="addlink">Import Leads (CSV)</a>
+    </li>
+{% endblock %}

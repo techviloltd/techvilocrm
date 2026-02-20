@@ -1,0 +1,60 @@
+<html>
+<head>
+    <style>
+        body { font-family: sans-serif; color: #333; }
+        .header { text-align: left; margin-bottom: 20px; }
+        .invoice-title { font-size: 24px; font-weight: bold; color: #000; }
+        .section-title { font-weight: bold; margin-top: 20px; border-bottom: 1px solid #eee; }
+        .bank-details { margin-top: 30px; font-size: 12px; border: 1px solid #ddd; padding: 10px; }
+    </style>
+</head>
+<table class="header-table">
+    <tr>
+        <td width="60%">
+            <img src="{{ logo }}" style="width: 150px; height: auto; margin-bottom: 10px;">
+            <p style="font-size: 12px; margin: 0;">
+                Flat 3, Prince George House, Luton LU1 2QX, UK [cite: 5, 6]
+            </p>
+        </td>
+        </tr>
+</table>
+<body>
+    <div class="header">
+        <h1 style="color: #2c3e50;">TECHVILO LTD</h1>
+        <p>Prince George House, Luton, UK [cite: 5, 6, 16]</p>
+        <p>Phone: +44 7412 995940 [cite: 7]</p>
+    </div>
+
+    <table width="100%">
+        <tr>
+            <td><strong>Billed To:</strong><br>{{ client.name }}<br>{{ client.company_name }}</td>
+            <td align="right"><strong>Invoice No:</strong> {{ invoice_no }}<br><strong>Date:</strong> {{ date }}</td>
+        </tr>
+    </table>
+
+    <table width="100%" style="margin-top: 30px; border-collapse: collapse;">
+        <tr style="background: #f4f4f4;">
+            <th style="padding: 10px; text-align: left;">Service Name</th>
+            <th style="padding: 10px; text-align: right;">Amount</th>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ client.services }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">${{ client.total_payable }}</td>
+        </tr>
+    </table>
+
+    <div align="right" style="margin-top: 20px;">
+        <p>Total Amount: ${{ client.total_payable }}</p>
+        <p>Paid Amount: ${{ client.paid_amount }}</p>
+        <p><strong>Balance Due: ${{ client.due_amount }}</strong></p>
+    </div>
+
+    <div class="bank-details">
+        <strong>BUSINESS ACCOUNT: TECHVILO LTD</strong> [cite: 15, 16]<br>
+        Sort Code: 30-54-66 [cite: 18]<br>
+        Account Number: 54359560 [cite: 20]<br>
+        IBAN: GB70LOYD30546654359560 [cite: 22]<br>
+        BIC: LOYDGB21F95 [cite: 24]
+    </div>
+</body>
+</html>

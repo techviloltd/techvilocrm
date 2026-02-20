@@ -1,0 +1,1160 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'dashboard' %}">
+        <img src="{% static 'logo.jpg' %}" alt="Logo"
+            style="height: 28px; vertical-align: middle; margin-right: 10px; border-radius: 4px;">
+        {{ site_header|default:_('Techvilo CRM') }}
+    </a>
+</h1>
+{% endblock %}
+
+{% block extrastyle %}
+<!-- Google Fonts: Manrope -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+<!-- Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    :root {
+        --sidebar-width: 260px;
+        --header-height: 60px;
+        --font-main: 'Manrope', sans-serif;
+        --star-blue: #1f3bb3;
+        --star-bg: #f4f5f7;
+        --sidebar-bg: #ffffff;
+        --text-color: #1f1f1f;
+        --text-muted: #8f92a1;
+        --border-color: #e4e9f2;
+    }
+
+    body {
+        font-family: var(--font-main) !important;
+        background-color: var(--star-bg) !important;
+    }
+
+    /* Override Default Header */
+    #header {
+        display: none !important;
+    }
+
+    #header a {
+        color: var(--text-color) !important;
+    }
+
+    #branding h1 {
+        color: var(--text-color) !important;
+        font-weight: 800;
+        font-size: 20px;
+    }
+
+    /* Sidebar Container */
+    .saas-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: var(--sidebar-width);
+        background: var(--sidebar-bg);
+        border-right: 1px solid var(--border-color);
+        z-index: 1001;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .brand-logo {
+        height: 80px;
+        /* Fixed height for brand logo */
+        display: flex;
+        align-items: center;
+        padding: 0 25px;
+        border-bottom: 1px solid var(--border-color);
+        font-weight: 800;
+        font-size: 22px;
+        color: var(--star-blue);
+        letter-spacing: -0.5px;
+    }
+
+    .nav-menu {
+        padding: 20px 0;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .nav-item {
+        list-style: none;
+        margin-bottom: 5px;
+    }
+
+    .nav-link {
+        display: flex;
+        align-items: center;
+        padding: 12px 25px;
+        color: var(--text-muted);
+        text-decoration: none !important;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        border-left: 3px solid transparent;
+    }
+
+    .nav-link:hover {
+        color: var(--star-blue);
+        background: #f8f9fa;
+    }
+
+    .nav-link.active {
+        color: var(--star-blue);
+        background: #f8f9fa;
+        border-left-color: var(--star-blue);
+        font-weight: 700;
+    }
+
+    .nav-link i {
+        width: 24px;
+        margin-right: 10px;
+        font-size: 16px;
+    }
+
+    .menu-title {
+        color: #bfaecb;
+        /* Muted purple/gray */
+        font-size: 12px;
+        text-transform: uppercase;
+        padding: 15px 25px 5px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    /* Main Content Adjustments */
+    #container {
+        margin-left: var(--sidebar-width);
+        padding-top: 20px;
+        /* Reduced from var(--header-height) */
+        width: auto !important;
+    }
+
+    /* Hide Default Breadcrumbs */
+    .breadcrumbs {
+        display: none !important;
+    }
+
+    /* Mobile Responsive (Basic) */
+    @media (max-width: 768px) {
+        .saas-sidebar {
+            display: none;
+        }
+
+        /* Hide for now or implement toggle */
+        #container {
+            margin-left: 0;
+        }
+
+        #header {
+            padding-left: 20px !important;
+        }
+    }
+
+    /* ══ CHANGE FORM: Sidebar Panel Layout ══════════════════════════════ */
+    body.change-form #content {
+        padding: 0 !important;
+        max-width: none !important;
+    }
+
+    body.change-form #content-main {
+        padding: 0 !important;
+        float: none !important;
+        width: 100% !important;
+    }
+
+    /* Sticky Save Bar */
+    .cf-bar {
+        position: sticky;
+        top: 0;
+        z-index: 200;
+        background: #fff;
+        border-bottom: 1px solid var(--border-color);
+        padding: 10px 22px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+    }
+
+    .cf-bar .cf-bar-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-color);
+    }
+
+    .cf-bar .cf-bar-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .cf-btn {
+        padding: 8px 18px;
+        border-radius: 7px;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: var(--font-main);
+        cursor: pointer;
+        transition: all 0.18s;
+        border: 1.5px solid var(--border-color);
+        background: #f1f5f9;
+        color: var(--text-color);
+        display: inline-block;
+        text-decoration: none;
+    }
+
+    .cf-btn-primary {
+        background: var(--star-blue) !important;
+        color: #fff !important;
+        border-color: var(--star-blue) !important;
+        box-shadow: 0 2px 6px rgba(31, 59, 179, 0.2);
+    }
+
+    .cf-btn-primary:hover {
+        filter: brightness(1.08);
+        transform: translateY(-1px);
+    }
+
+    .cf-btn:hover {
+        background: #e2e8f0;
+    }
+
+    /* 2-Column Grid */
+    .cf-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 330px;
+        gap: 18px;
+        padding: 18px 22px;
+        align-items: start;
+    }
+
+    .cf-main {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .cf-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    /* Cards */
+    .cf-card {
+        background: #fff;
+        border-radius: 11px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+        margin-bottom: 16px;
+    }
+
+    .cf-card-head {
+        padding: 11px 16px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        background: #fafbff;
+    }
+
+    .cf-card-head .ci {
+        width: 28px;
+        height: 28px;
+        background: #e8ecfb;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+    }
+
+    .cf-card-head span {
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--star-blue);
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+    }
+
+    /* Fieldset overrides in change-form */
+    body.change-form fieldset.module {
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    body.change-form fieldset h2 {
+        display: none !important;
+    }
+
+    /* Only apply flex to fieldset rows, NOT tabular inline <tr> rows */
+    body.change-form fieldset .form-row {
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 9px 15px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        border-left: 3px solid transparent !important;
+        transition: background 0.15s;
+    }
+
+    body.change-form fieldset .form-row:last-child {
+        border-bottom: none !important;
+    }
+
+    body.change-form fieldset .form-row:focus-within {
+        background: #f8faff !important;
+        border-left-color: var(--star-blue) !important;
+    }
+
+    body.change-form fieldset .form-row>div,
+    body.change-form fieldset .fieldBox {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        margin-left: 0 !important;
+    }
+
+    /* Tabular inline rows must stay as table rows */
+    body.change-form .tabular tr.form-row {
+        display: table-row !important;
+    }
+
+    body.change-form .tabular td {
+        display: table-cell !important;
+        vertical-align: top !important;
+    }
+
+    body.change-form .aligned label {
+        float: none !important;
+        width: auto !important;
+        text-align: left !important;
+        display: block !important;
+        margin: 0 0 4px !important;
+        padding: 0 !important;
+        color: #64748b !important;
+        font-weight: 700 !important;
+        font-size: 10.5px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }
+
+    body.change-form input[type=text],
+    body.change-form input[type=password],
+    body.change-form input[type=email],
+    body.change-form input[type=url],
+    body.change-form input[type=number],
+    body.change-form textarea,
+    body.change-form select {
+        width: 100% !important;
+        padding: 8px 12px !important;
+        border: 1.5px solid var(--border-color) !important;
+        border-radius: 7px !important;
+        font-family: var(--font-main) !important;
+        font-size: 13px !important;
+        background: #fff !important;
+        color: #1e293b !important;
+        /* fixed text visibility */
+        box-sizing: border-box !important;
+        transition: border-color 0.2s, box-shadow 0.2s !important;
+        height: auto !important;
+        outline: none !important;
+    }
+
+    body.change-form input:focus,
+    body.change-form textarea:focus,
+    body.change-form select:focus {
+        border-color: var(--star-blue) !important;
+        box-shadow: 0 0 0 3px rgba(31, 59, 179, 0.09) !important;
+    }
+
+    body.change-form textarea {
+        min-height: 60px !important;
+        resize: vertical !important;
+    }
+
+    body.change-form .tabular textarea {
+        min-height: 40px !important;
+        height: 40px !important;
+    }
+
+    body.change-form .related-widget-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        width: 100%;
+    }
+
+    body.change-form .help,
+    body.change-form p.help,
+    body.change-form div.help {
+        font-size: 11px !important;
+        color: #64748b !important;
+        margin-top: 3px !important;
+        padding: 0 !important;
+    }
+
+    body.change-form .submit-row {
+        display: none !important;
+    }
+
+    body.change-form .object-tools {
+        display: none !important;
+    }
+
+    body.change-form .breadcrumbs {
+        display: none !important;
+    }
+
+    /* Ultra-Modern Minimal Selector (Filter Horizontal) */
+    .selector {
+        width: 100% !important;
+        max-width: 900px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        margin: 15px 0 !important;
+    }
+
+    .selector-available,
+    .selector-chosen {
+        flex: 1 !important;
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        overflow: hidden !important;
+        background: #fff !important;
+        width: auto !important;
+    }
+
+    .selector h2 {
+        background: #f8fafc !important;
+        color: #64748b !important;
+        font-size: 10px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        padding: 8px 12px !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        margin: 0 !important;
+    }
+
+    .selector .selector-filter {
+        padding: 5px 10px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        background: #fff !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 5px !important;
+    }
+
+    .selector .selector-filter label {
+        display: none !important;
+    }
+
+    .selector .selector-filter input {
+        width: 100% !important;
+        height: 30px !important;
+        padding: 0 10px !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 6px !important;
+        font-size: 11px !important;
+        outline: none !important;
+    }
+
+    .selector select {
+        width: 100% !important;
+        height: 120px !important;
+        border: none !important;
+        padding: 5px !important;
+        font-size: 13px !important;
+        color: #1e293b !important;
+        overflow-y: auto !important;
+    }
+
+    .selector-chooser {
+        flex: 0 0 45px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 0 !important;
+        background: transparent !important;
+    }
+
+    .selector-chooser li {
+        list-style: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .selector-add,
+    .selector-remove {
+        width: 34px !important;
+        height: 34px !important;
+        background: #f1f5f9 !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-indent: 0 !important;
+        font-size: 0 !important;
+        cursor: pointer !important;
+        transition: all 0.2s !important;
+        color: #475569 !important;
+    }
+
+    .selector-add::before {
+        content: "\f061" !important;
+        font-family: "Font Awesome 5 Free" !important;
+        font-weight: 900 !important;
+        font-size: 12px !important;
+    }
+
+    .selector-remove::before {
+        content: "\f060" !important;
+        font-family: "Font Awesome 5 Free" !important;
+        font-weight: 900 !important;
+        font-size: 12px !important;
+    }
+
+    .selector-add:hover,
+    .selector-remove:hover {
+        background: var(--star-blue) !important;
+        color: #fff !important;
+        border-color: var(--star-blue) !important;
+        transform: scale(1.1) !important;
+    }
+
+    .selector-help {
+        display: none !important;
+    }
+
+    .selector-chooseall,
+    .selector-clearall {
+        display: inline-block !important;
+        padding: 4px 10px !important;
+        margin-top: 5px !important;
+        background: #f1f5f9 !important;
+        color: #64748b !important;
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        border-radius: 4px !important;
+        text-decoration: none !important;
+    }
+
+    .selector-chooseall:hover,
+    .selector-clearall:hover {
+        background: var(--star-blue) !important;
+        color: #fff !important;
+    }
+
+    /* Inline overrides */
+    body.change-form .inline-group {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
+
+    body.change-form .inline-group h2 {
+        display: none !important;
+    }
+
+    body.change-form .inline-related h3 {
+        display: none !important;
+    }
+
+    body.change-form .inline-related,
+    body.change-form .tabular,
+    body.change-form .cf-card,
+    body.change-form .cf-main {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    body.change-form .tabular table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    body.change-form .tabular thead th {
+        background: #f8fafc !important;
+        color: #64748b !important;
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        padding: 9px 13px !important;
+        border: none !important;
+        border-bottom: 1.5px solid var(--border-color) !important;
+        text-align: left !important;
+    }
+
+    body.change-form .tabular tbody tr {
+        background: #fff !important;
+    }
+
+    body.change-form .tabular td {
+        padding: 8px 13px !important;
+        border: none !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        vertical-align: middle !important;
+        font-size: 13px !important;
+    }
+
+    body.change-form .add-row {
+        padding: 10px 16px !important;
+        border-top: 1px solid var(--border-color) !important;
+    }
+
+    body.change-form .add-row a {
+        color: var(--star-blue) !important;
+        font-weight: 600 !important;
+        font-size: 13px !important;
+        text-decoration: none !important;
+    }
+
+    /* ══ CHANGE LIST: Global Aggressive Senior Redesign ══════════════════ */
+    body.change-list #content {
+        padding: 40px !important;
+        /* increased whitespace */
+        background: var(--star-bg);
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+
+    body.change-list h1 {
+        font-family: var(--font-main) !important;
+        font-size: 28px !important;
+        font-weight: 800 !important;
+        color: var(--text-color) !important;
+        margin: 0 0 30px 0 !important;
+        letter-spacing: -0.5px !important;
+    }
+
+    body.change-list #changelist-filter {
+        display: none !important;
+    }
+
+    body.change-list .filtered #changelist {
+        margin-right: 0 !important;
+    }
+
+    body.change-list #changelist {
+        background: #fff;
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        overflow: hidden;
+        width: 100% !important;
+    }
+
+    body.change-list .results {
+        overflow-x: hidden !important;
+        width: 100% !important;
+    }
+
+    /* Toolbar (Search) Modernization */
+    body.change-list #toolbar {
+        background: #fff;
+        padding: 25px 30px !important;
+        border-bottom: 1px solid #f1f5f9;
+        margin: 0 !important;
+        display: flex;
+        align-items: center;
+    }
+
+    body.change-list #changelist-search {
+        flex: 1;
+        display: flex;
+        align-items: center;
+    }
+
+    body.change-list #changelist-search input[type=text] {
+        height: 46px !important;
+        border-radius: 10px !important;
+        border: 1.5px solid #e2e8f0 !important;
+        padding: 0 18px !important;
+        width: 380px !important;
+        font-size: 14px !important;
+        font-family: var(--font-main) !important;
+        color: #111827 !important;
+        /* extremely dark gray/black */
+        background: #ffffff !important;
+        /* explicit white background */
+        transition: all 0.2s;
+        box-shadow: none !important;
+    }
+
+    body.change-list #changelist-search input[type=text]:focus {
+        border-color: var(--star-blue) !important;
+        background: #ffffff !important;
+        color: #111827 !important;
+        width: 420px !important;
+        box-shadow: 0 0 0 4px rgba(31, 59, 179, 0.1) !important;
+        /* premium focus depth */
+    }
+
+    body.change-list #changelist-search input[type=submit] {
+        height: 50px !important;
+        /* larger height */
+        border-radius: 12px !important;
+        padding: 0 32px !important;
+        /* more horizontal padding */
+        background: var(--star-blue) !important;
+        color: #fff !important;
+        border: none !important;
+        font-weight: 800 !important;
+        font-size: 15px !important;
+        margin-left: 12px !important;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(31, 59, 179, 0.2) !important;
+    }
+
+    body.change-list #changelist-search input[type=submit]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(31, 59, 179, 0.3) !important;
+    }
+
+    /* Actions Bar Refinement */
+    body.change-list .actions {
+        padding: 18px 30px !important;
+        background: #fff !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        font-family: var(--font-main) !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: var(--text-muted) !important;
+    }
+
+    body.change-list .actions select {
+        padding: 0 12px !important;
+        height: 40px !important;
+        border-radius: 8px !important;
+        border: 1px solid var(--border-color) !important;
+        font-weight: 600 !important;
+        color: #111827 !important;
+        background: #fff !important;
+        outline: none !important;
+        vertical-align: middle !important;
+    }
+
+    body.change-list .actions .button {
+        background: #f1f5f9 !important;
+        color: var(--text-color) !important;
+        border-radius: 8px !important;
+        padding: 0 20px !important;
+        height: 40px !important;
+        font-weight: 800 !important;
+        line-height: 40px !important;
+        display: inline-block !important;
+        vertical-align: middle !important;
+        margin-left: 8px !important;
+        transition: all 0.2s !important;
+    }
+
+    /* Table Excellence */
+    body.change-list .results table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    body.change-list .results thead th {
+        background: #f8fafc !important;
+        padding: 16px 20px !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.8px !important;
+        color: #64748b !important;
+        border-bottom: 2px solid #e2e8f0 !important;
+        text-align: left !important;
+        vertical-align: middle !important;
+    }
+
+    body.change-list .results thead th.action-checkbox-column {
+        width: 60px !important;
+        text-align: center !important;
+        padding: 16px 0 !important;
+    }
+
+    body.change-list .results thead th a {
+        color: #475569 !important;
+    }
+
+    body.change-list .results tbody td {
+        padding: 16px 20px !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        color: #1e293b !important;
+        vertical-align: middle !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        transition: background 0.15s;
+    }
+
+    body.change-list .results tbody td.action-checkbox {
+        width: 60px !important;
+        text-align: center !important;
+        padding: 16px 0 !important;
+    }
+
+    body.change-list .results tbody tr:hover {
+        background: #fcfdfe !important;
+    }
+
+    body.change-list .results tbody tr.selected {
+        background: #f0f4ff !important;
+    }
+
+    body.change-list a:link,
+    body.change-list a:visited {
+        color: var(--star-blue) !important;
+        font-weight: 700 !important;
+        /* bolder links */
+        text-decoration: none !important;
+    }
+
+    body.change-list a:hover {
+        text-decoration: underline !important;
+    }
+
+    /* Modern Custom Checkboxes */
+    body.change-list input[type=checkbox] {
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        width: 18px !important;
+        height: 18px !important;
+        border: 2px solid #cbd5e1 !important;
+        border-radius: 5px !important;
+        background: #fff !important;
+        cursor: pointer !important;
+        position: relative !important;
+        transition: all 0.2s !important;
+        display: inline-block !important;
+        vertical-align: middle !important;
+        margin: 0 !important;
+    }
+
+    body.change-list input[type=checkbox]:checked {
+        background: var(--star-blue) !important;
+        border-color: var(--star-blue) !important;
+    }
+
+    body.change-list input[type=checkbox]:checked::after {
+        content: '✓' !important;
+        color: #fff !important;
+        font-size: 13px !important;
+        font-weight: 900 !important;
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+    }
+
+    body.change-list input[type=checkbox]:hover {
+        border-color: var(--star-blue) !important;
+    }
+
+    /* Center the Checkbox in Header */
+    body.change-list .results thead th.action-checkbox-column .text {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+
+    body.change-list .results thead th.action-checkbox-column input {
+        margin: 0 !important;
+    }
+
+    /* Object Tools (Global Add Button) */
+    body.change-list .object-tools {
+        float: right !important;
+        margin: 0 0 35px 0 !important;
+    }
+
+    body.change-list .object-tools a.addlink {
+        background: var(--star-blue) !important;
+        padding: 12px 28px !important;
+        border-radius: 10px !important;
+        font-weight: 800 !important;
+        font-size: 14px !important;
+        color: #fff !important;
+        text-transform: none !important;
+        box-shadow: 0 4px 12px rgba(31, 59, 179, 0.25) !important;
+        transition: all 0.2s;
+    }
+
+    body.change-list .object-tools a.addlink:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.1);
+        box-shadow: 0 6px 16px rgba(31, 59, 179, 0.35) !important;
+    }
+
+    /* Pagination Modernization */
+    body.change-list .paginator {
+        padding: 25px 30px !important;
+        background: #fff !important;
+        border-top: 1px solid #f1f5f9 !important;
+        font-weight: 700 !important;
+        color: var(--text-muted) !important;
+        font-size: 13px !important;
+    }
+
+    /* ══ DOCUMENT UI: Optimized Previews ═════════════════════════════════ */
+    .doc-preview-wrapper {
+        display: inline-block;
+        position: relative;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 2px solid #fff;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: #fff;
+    }
+
+    .doc-preview-wrapper:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+    }
+
+    .doc-thumb {
+        display: block;
+        max-height: 90px;
+        max-width: 140px;
+        object-fit: cover;
+    }
+
+    .doc-icon-box {
+        width: 140px;
+        height: 90px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: #f1f5f9;
+        color: #64748b;
+        font-size: 28px;
+    }
+
+    .doc-icon-box span {
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Premium Download Button */
+    .btn-modern-dl {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: #11c15b !important;
+        color: #fff !important;
+        padding: 10px 22px !important;
+        border-radius: 12px !important;
+        font-weight: 800 !important;
+        font-size: 13px !important;
+        text-decoration: none !important;
+        box-shadow: 0 4px 12px rgba(17, 193, 91, 0.2) !important;
+        transition: all 0.2s !important;
+    }
+
+    .btn-modern-dl:hover {
+        filter: brightness(1.1);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(17, 193, 91, 0.3) !important;
+    }
+</style>
+{% endblock %}
+
+{% block extrahead %}{{ block.super }}{% endblock %}
+
+{% block footer %}
+{{ block.super }}
+<script>
+    (function () {
+        // Only run on change-form pages
+        if (!document.body.classList.contains('change-form')) return;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var contentMain = document.getElementById('content-main');
+            if (!contentMain) return;
+
+            var form = contentMain.querySelector('form');
+            if (!form) return;
+
+            // ── Build Sticky Bar ────────────────────────────────────────────
+            var bar = document.createElement('div');
+            bar.className = 'cf-bar';
+            bar.innerHTML = '<div class="cf-bar-title">📋 Lead / Customer Form</div>' +
+                '<div class="cf-bar-actions">' +
+                '  <button type="submit" form="' + form.id + '" name="_addanother" class="cf-btn">+ Add Another</button>' +
+                '  <button type="submit" form="' + form.id + '" name="_continue" class="cf-btn">Save &amp; Continue</button>' +
+                '  <button type="submit" form="' + form.id + '" class="cf-btn cf-btn-primary">💾 Save</button>' +
+                '</div>';
+            contentMain.insertBefore(bar, contentMain.firstChild);
+
+            // ── Find fieldsets ──────────────────────────────────────────────
+            var fieldsets = Array.from(form.querySelectorAll(':scope > div > fieldset.module'));
+            // Also find inline groups
+            var inlineGroups = Array.from(form.querySelectorAll('.inline-group'));
+
+            if (fieldsets.length === 0) return;
+
+            // ── Build Grid ──────────────────────────────────────────────────
+            var grid = document.createElement('div');
+            grid.className = 'cf-grid';
+
+            var mainCol = document.createElement('div');
+            mainCol.className = 'cf-main';
+
+            var sideCol = document.createElement('div');
+            sideCol.className = 'cf-sidebar';
+
+            // First fieldset → main card
+            var mainCard = document.createElement('div');
+            mainCard.className = 'cf-card';
+            mainCard.innerHTML = '<div class="cf-card-head"><div class="ci">📋</div><span>Lead Details</span></div>';
+            mainCard.appendChild(fieldsets[0]);
+            mainCol.appendChild(mainCard);
+
+            // Inline groups → main col
+            inlineGroups.forEach(function (ig) {
+                var title = ig.querySelector('h2');
+                var titleText = title ? title.textContent.trim() : 'Related';
+                var card = document.createElement('div');
+                card.className = 'cf-card';
+                card.innerHTML = '<div class="cf-card-head"><div class="ci">💬</div><span>' + titleText + '</span></div>';
+                card.appendChild(ig);
+                mainCol.appendChild(card);
+            });
+
+            // Remaining fieldsets (2nd+) → sidebar
+            var icons = ['📊', '📅', '🏷️', '🔖'];
+            fieldsets.slice(1).forEach(function (fs, i) {
+                var fsHeading = fs.querySelector('h2');
+                var fsTitle = fsHeading ? fsHeading.textContent.trim() : 'Details';
+                var card = document.createElement('div');
+                card.className = 'cf-card';
+                card.innerHTML = '<div class="cf-card-head"><div class="ci">' + (icons[i] || '📌') + '</div><span>' + fsTitle + '</span></div>';
+                card.appendChild(fs);
+                sideCol.appendChild(card);
+            });
+
+            grid.appendChild(mainCol);
+            grid.appendChild(sideCol);
+
+            // Insert grid where the div wrapper was
+            var formDiv = form.querySelector(':scope > div');
+            if (formDiv) {
+                formDiv.insertBefore(grid, formDiv.firstChild);
+            }
+        });
+    })();
+</script>
+
+{{ block.super }}
+<div class="saas-sidebar">
+    <div class="brand-logo">
+        Techvilo<span style="color: var(--text-color);">CRM</span>
+    </div>
+
+    <div class="nav-menu">
+        <div class="nav-item">
+            <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/dashboard/' %}active{% endif %}">
+                <i class="fas fa-th-large"></i> Dashboard
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{% url 'kanban_board' %}" class="nav-link {% if '/kanban/' in request.path %}active{% endif %}">
+                <i class="fas fa-columns"></i> Project Board
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{% url 'calendar_view' %}" class="nav-link {% if '/calendar/' in request.path %}active{% endif %}">
+                <i class="far fa-calendar-alt"></i> Calendar
+            </a>
+        </div>
+
+        <div class="menu-title">CRM MODULES</div>
+
+        <div class="nav-item">
+            <a href="/admin/crm/lead/" class="nav-link {% if '/lead/' in request.path %}active{% endif %}">
+                <i class="fas fa-funnel-dollar"></i> Leads
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin/crm/client/" class="nav-link {% if '/client/' in request.path %}active{% endif %}">
+                <i class="fas fa-user-tie"></i> Clients
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin/crm/project/" class="nav-link {% if '/project/' in request.path %}active{% endif %}">
+                <i class="fas fa-rocket"></i> Projects
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin/crm/task/" class="nav-link {% if '/task/' in request.path %}active{% endif %}">
+                <i class="fas fa-tasks"></i> Tasks
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin/crm/transaction/"
+                class="nav-link {% if '/transaction/' in request.path %}active{% endif %}">
+                <i class="fas fa-file-invoice-dollar"></i> Transactions
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin/crm/document/" class="nav-link {% if '/document/' in request.path %}active{% endif %}">
+                <i class="fas fa-file-pdf"></i> Documents
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin/crm/kpitarget/" class="nav-link {% if '/kpitarget/' in request.path %}active{% endif %}">
+                <i class="fas fa-chart-line"></i> KPI Targets
+            </a>
+        </div>
+
+        <div class="menu-title">ADMIN</div>
+
+        <div class="nav-item">
+            <a href="/admin/auth/user/" class="nav-link">
+                <i class="fas fa-users-cog"></i> Users & Staff
+            </a>
+        </div>
+
+        <div style="margin-top: auto; padding: 20px;">
+            <a href="{% url 'admin:logout' %}" class="nav-link" style="color: #ff5252;">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block nav-sidebar %}
+<!-- Hide Default Django Admin Sidebar -->
+{% endblock %}

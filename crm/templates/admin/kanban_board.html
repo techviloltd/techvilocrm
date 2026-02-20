@@ -1,0 +1,545 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+    /* Brand Colors for Kanban */
+    :root {
+        --primary: #FF8C00;
+        --secondary: #982598;
+        --accent: #018790;
+        --dark-blue: #15173D;
+        --navy: #1B3C53;
+        --bg-color: #FCF8F8;
+
+        --kanban-bg: var(--bg-color);
+        --column-bg: #f0f2f5;
+        --card-bg: #ffffff;
+        --text-primary: var(--dark-blue);
+        --text-secondary: var(--navy);
+        --shadow: 0 1px 20px rgba(21, 23, 61, 0.08);
+    }
+
+    body {
+        margin: 0;
+        background-color: var(--kanban-bg) !important;
+        color: var(--text-primary) !important;
+    }
+
+    .dashboard-container {
+        padding: 10px 20px;
+    }
+
+    .header-flex {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        background: white;
+        padding: 15px 25px;
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+    }
+
+    h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--dark-blue);
+    }
+
+    /* Modern Switcher */
+    .view-switcher {
+        display: flex;
+        background: #f1f5f9;
+        padding: 4px;
+        border-radius: 10px;
+        gap: 4px;
+    }
+
+    .switch-btn {
+        padding: 8px 20px;
+        border-radius: 7px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 700;
+        color: #64748b;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .switch-btn.active {
+        background: white;
+        color: var(--primary);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .switch-btn:hover:not(.active) {
+        background: #e2e8f0;
+    }
+
+    .kanban-board {
+        display: flex;
+        gap: 20px;
+        overflow-x: auto;
+        padding-bottom: 20px;
+        align-items: flex-start;
+    }
+
+    .kanban-column {
+        flex: 1;
+        min-width: 300px;
+        max-width: 400px;
+        background-color: var(--column-bg);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        transition: background 0.2s;
+    }
+
+    .kanban-column h3 {
+        margin: 0 0 16px 0;
+        padding-bottom: 10px;
+        border-bottom: 3px solid transparent;
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--navy);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* Column specific colors */
+    .kanban-column[data-status="TODO"],
+    .kanban-column[data-status="PLANNING"] h3 {
+        border-bottom-color: var(--secondary);
+    }
+
+    .kanban-column[data-status="IN_PROGRESS"] h3 {
+        border-bottom-color: var(--primary);
+    }
+
+    .kanban-column[data-status="REVIEW"] h3 {
+        border-bottom-color: var(--accent);
+    }
+
+    .kanban-column[data-status="DONE"],
+    .kanban-column[data-status="COMPLETED"] h3 {
+        border-bottom-color: #10b981;
+    }
+
+    .kanban-card {
+        background-color: var(--card-bg);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        cursor: grab;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+    }
+
+    .kanban-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        border-color: #e2e8f0;
+    }
+
+    .kanban-card h4 {
+        margin: 0 0 10px 0;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--dark-blue);
+    }
+
+    .card-meta {
+        font-size: 12px;
+        color: #64748b;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+    }
+
+    .tag-project {
+        background: rgba(255, 140, 0, 0.1);
+        color: var(--primary);
+    }
+
+    .tag-client {
+        background: rgba(1, 135, 144, 0.1);
+        color: var(--accent);
+    }
+
+    .dragging {
+        opacity: 0.5;
+        cursor: grabbing;
+        transform: scale(0.95);
+    }
+
+    /* Priority dots */
+    .priority-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+
+    .priority-HIGH {
+        background-color: #ef4444;
+    }
+
+    .priority-MEDIUM {
+        background-color: #f59e0b;
+    }
+
+    .priority-LOW {
+        background-color: #3b82f6;
+    }
+
+    /* Card priority borders */
+    .kanban-card.prio-HIGH {
+        border-left: 4px solid #ef4444 !important;
+    }
+
+    .kanban-card.prio-MEDIUM {
+        border-left: 4px solid #f59e0b !important;
+    }
+
+    .kanban-card.prio-LOW {
+        border-left: 4px solid #3b82f6 !important;
+    }
+
+    /* Overdue highlight */
+    .kanban-card.overdue {
+        border: 2px solid #ef4444 !important;
+        background: #fff1f2 !important;
+    }
+
+    .overdue-badge {
+        background: #ef4444;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 9px;
+        font-weight: 900;
+        margin-left: 5px;
+    }
+
+    /* Quick Add UI */
+    .quick-add-container {
+        margin-top: auto;
+        /* Push to bottom of column */
+        padding-top: 10px;
+    }
+
+    .quick-add-btn {
+        width: 100%;
+        padding: 10px;
+        border: 2px dashed #cbd5e1;
+        background: transparent;
+        color: #64748b;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .quick-add-btn:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: #fff;
+    }
+
+    .quick-add-form {
+        display: none;
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+        border: 1px solid #e2e8f0;
+        margin-top: 10px;
+    }
+
+    .quick-add-form input,
+    .quick-add-form select {
+        width: 100%;
+        height: 44px;
+        padding: 0 12px;
+        margin-bottom: 15px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 14px;
+        outline: none;
+        background-color: white !important;
+        color: #1e293b !important;
+        box-sizing: border-box;
+        display: block;
+    }
+
+    .quick-add-form select {
+        padding-right: 30px;
+        /* Space for the arrow */
+    }
+
+    .quick-add-form input:focus {
+        border-color: var(--primary);
+    }
+
+    .quick-add-form .form-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .quick-add-form button {
+        flex: 1;
+        padding: 10px;
+        border-radius: 8px;
+        font-weight: 700;
+        cursor: pointer;
+        border: none;
+    }
+
+    .btn-save {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-cancel {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+</style>
+
+<div class="dashboard-container">
+    <div class="header-flex">
+        <h1>Unified Kanban Board</h1>
+        <div class="view-switcher">
+            <a href="?type=projects" class="switch-btn {% if board_type == 'projects' %}active{% endif %}">🚀
+                Projects</a>
+            <a href="?type=tasks" class="switch-btn {% if board_type == 'tasks' %}active{% endif %}">✅ Tasks</a>
+        </div>
+    </div>
+
+    <div class="kanban-board">
+        {% for status, items in kanban_data.items %}
+        <div class="kanban-column" data-status="{{ status }}">
+            <h3>
+                {{ status|title|cut:"_" }} <span class="column-count">({{ items|length }})</span>
+            </h3>
+
+            {% for item in items %}
+            <div class="kanban-card prio-{{ item.priority }} {% if board_type == 'tasks' and item.due_date and item.due_date < today and not item.is_completed %}overdue{% endif %}"
+                draggable="true" data-id="{{ item.id }}">
+
+                {% if board_type == 'tasks' %}
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <span class="tag tag-project">{{ item.project.project_name }}</span>
+                    {% if item.due_date and item.due_date < today and not item.is_completed %} <span
+                        class="overdue-badge">OVERDUE</span>
+                        {% endif %}
+                </div>
+                <h4><span class="priority-dot priority-{{ item.priority }}"></span>{{ item.task_name }}</h4>
+
+                {# Checklist Progress #}
+                {% if item.checklist_total > 0 %}
+                <div
+                    style="font-size: 11px; color: #64748b; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                    <span>📋 {{ item.checklist_done }}/{{ item.checklist_total }}</span>
+                    <div style="flex-grow: 1; height: 4px; background: #eee; border-radius: 2px;">
+                        {% widthratio item.checklist_done item.checklist_total 100 as percent %}
+                        <div style="width: {{ percent }}%; height: 100%; background: #10b981; border-radius: 2px;">
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="card-meta">
+                    <span>👤 {{ item.assigned_to.username|default:"Unassigned" }}</span>
+                    {% if item.due_date %}<span style="color: #ef4444; font-weight: 600;">📅 {{ item.due_date|date:"M d" }}</span>{% endif %}
+                </div>
+                {% else %}
+                <span class="tag tag-client">{{ item.client.name }}</span>
+                <h4>{{ item.project_name }}</h4>
+                <div class="card-meta">
+                    <span style="font-weight: 700; color: var(--primary);">📊 {{ item.progress_percentage }}%</span>
+                    {% if item.deadline %}<span style="color: #6366f1; font-weight: 600;">⌛ {{ item.deadline|date:"M d" }}</span>{% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div class="kanban-empty-placeholder"
+                style="text-align: center; color: #94a3b8; font-size: 12px; padding: 40px 20px; border: 2px dashed #e2e8f0; border-radius: 10px;">
+                No items here
+            </div>
+            {% endfor %}
+
+            {% if board_type == 'tasks' %}
+            <div class="quick-add-container">
+                <button class="quick-add-btn" onclick="showQuickAdd('{{ status }}')">
+                    <i class="fas fa-plus"></i> Add Task
+                </button>
+                <div id="form-{{ status }}" class="quick-add-form">
+                    <input type="text" placeholder="Task Name..." id="input-{{ status }}">
+                    <select id="project-{{ status }}">
+                        <option value="">Select Project...</option>
+                        {% for p in projects %}
+                        <option value="{{ p.id }}">{{ p.project_name }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-actions">
+                        <button class="btn-save" onclick="submitQuickAdd('{{ status }}')">Save</button>
+                        <button class="btn-cancel" onclick="hideQuickAdd('{{ status }}')">Cancel</button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {# Placeholder for empty columns after dynamic moves #}
+            <div class="kanban-empty-placeholder dynamic-placeholder"
+                style="display: none; text-align: center; color: #94a3b8; font-size: 12px; padding: 40px 20px; border: 2px dashed #e2e8f0; border-radius: 10px;">
+                No items here
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    const itemType = "{{ board_type }}".slice(0, -1); // 'project' or 'task'
+    const cards = document.querySelectorAll('.kanban-card');
+    const columns = document.querySelectorAll('.kanban-column');
+
+    cards.forEach(card => {
+        card.addEventListener('dragstart', () => card.classList.add('dragging'));
+        card.addEventListener('dragend', () => {
+            const previousParent = card.dataset.previousParent ? document.querySelector(`[data-status="${card.dataset.previousParent}"]`) : null;
+            card.classList.remove('dragging');
+            const newParent = card.parentElement;
+            const newStatus = newParent.dataset.status;
+            const itemId = card.dataset.id;
+
+            updateItemStatus(itemId, newStatus);
+            refreshUI();
+        });
+    });
+
+    // Tracking previous parent to refresh both columns
+    cards.forEach(card => {
+        card.addEventListener('mousedown', () => {
+            card.dataset.previousParent = card.parentElement.dataset.status;
+        });
+    });
+
+    columns.forEach(column => {
+        column.addEventListener('dragover', e => {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(column, e.clientY);
+            const draggable = document.querySelector('.dragging');
+            if (!afterElement) column.appendChild(draggable);
+            else column.insertBefore(draggable, afterElement);
+        });
+    });
+
+    function refreshUI() {
+        columns.forEach(col => {
+            const itemCount = col.querySelectorAll('.kanban-card').length;
+            // Update count in header
+            const countSpan = col.querySelector('.column-count');
+            if (countSpan) countSpan.textContent = `(${itemCount})`;
+
+            // Toggle placeholders
+            const placeholders = col.querySelectorAll('.kanban-empty-placeholder');
+            placeholders.forEach(p => {
+                p.style.display = itemCount === 0 ? 'block' : 'none';
+            });
+        });
+    }
+
+    function getDragAfterElement(container, y) {
+        const draggables = [...container.querySelectorAll('.kanban-card:not(.dragging)')];
+        return draggables.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) return { offset, element: child };
+            return closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    function updateItemStatus(id, status) {
+        fetch(`/kanban/update/${itemType}/${id}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: status })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) alert('Error: ' + data.error);
+            });
+    }
+
+    // Quick Add Functions
+    function showQuickAdd(status) {
+        document.getElementById(`form-${status}`).style.display = 'block';
+        document.querySelector(`[data-status="${status}"] .quick-add-btn`).style.display = 'none';
+        document.getElementById(`input-${status}`).focus();
+    }
+
+    function hideQuickAdd(status) {
+        document.getElementById(`form-${status}`).style.display = 'none';
+        document.querySelector(`[data-status="${status}"] .quick-add-btn`).style.display = 'flex';
+    }
+
+    function submitQuickAdd(status) {
+        const nameInput = document.getElementById(`input-${status}`);
+        const projectSelect = document.getElementById(`project-${status}`);
+        const name = nameInput.value;
+        const project = projectSelect.value;
+
+        if (!name || !project) {
+            alert('Please enter task name and select a project');
+            return;
+        }
+
+        fetch('/kanban/quick-add/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                task_name: name,
+                project_id: project,
+                status: status
+            })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Just reload for now to get full card template with priority etc.
+                    // Or we could build the HTML manually, but reload is safer for these many features.
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            });
+    }
+</script>
+{% endblock %}

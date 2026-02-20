@@ -1,0 +1,273 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+
+<style>
+    /* ===== CALENDAR LIGHT THEME ===== */
+
+    .calendar-wrapper {
+        max-width: 72%;
+        margin: 24px auto;
+        padding: 0 20px;
+        height: calc(100vh - 110px);
+    }
+
+    .calendar-main {
+        width: 100%;
+        height: 100%;
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    #calendar {
+        flex-grow: 1;
+        height: 100%;
+    }
+
+    /* ===== TOOLBAR ===== */
+    .fc-header-toolbar {
+        margin-bottom: 20px !important;
+    }
+
+    .fc-toolbar-title {
+        font-size: 22px !important;
+        font-weight: 700 !important;
+        color: #111827 !important;
+    }
+
+    .fc-button-primary {
+        background-color: #f9fafb !important;
+        color: #374151 !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 8px !important;
+        text-transform: capitalize !important;
+        font-weight: 500 !important;
+        font-size: 13px !important;
+        padding: 6px 14px !important;
+        box-shadow: none !important;
+        transition: all 0.15s ease !important;
+    }
+
+    .fc-button-primary:hover {
+        background-color: #f3f4f6 !important;
+        color: #111827 !important;
+        border-color: #9ca3af !important;
+    }
+
+    .fc-button-primary:focus {
+        box-shadow: 0 0 0 2px rgba(255, 140, 0, 0.25) !important;
+    }
+
+    .fc-button-active,
+    .fc-button-primary:not(:disabled).fc-button-active {
+        background-color: #fff7ed !important;
+        color: #FF8C00 !important;
+        border-color: #FF8C00 !important;
+        font-weight: 700 !important;
+    }
+
+    /* ===== GRID ===== */
+    .fc-theme-standard td,
+    .fc-theme-standard th {
+        border-color: #e5e7eb !important;
+    }
+
+    /* Day name header (SUN, MON …) */
+    .fc-col-header-cell {
+        background: #f9fafb !important;
+        border-bottom: 2px solid #e5e7eb !important;
+    }
+
+    .fc-col-header-cell-cushion {
+        color: #6b7280 !important;
+        text-transform: uppercase;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        padding: 10px 0 !important;
+        text-decoration: none !important;
+    }
+
+    /* Day cells */
+    .fc-daygrid-day {
+        background: #ffffff !important;
+        transition: background 0.1s;
+    }
+
+    .fc-daygrid-day:hover {
+        background: #fafafa !important;
+    }
+
+    /* Days outside current month */
+    .fc-day-other {
+        background: #f9fafb !important;
+    }
+
+    .fc-day-other .fc-daygrid-day-number {
+        color: #d1d5db !important;
+    }
+
+    /* Day numbers */
+    .fc-daygrid-day-top {
+        justify-content: center;
+        padding-top: 6px;
+    }
+
+    .fc-daygrid-day-number {
+        font-size: 13px;
+        font-weight: 500;
+        color: #374151 !important;
+        text-decoration: none !important;
+    }
+
+    /* TODAY highlight */
+    .fc-day-today {
+        background: #fff7ed !important;
+    }
+
+    .fc-day-today .fc-daygrid-day-number {
+        background: #FF8C00 !important;
+        color: #ffffff !important;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+    }
+
+    /* ===== EVENTS ===== */
+    .fc-event {
+        border-radius: 5px !important;
+        border: none !important;
+        padding: 2px 6px !important;
+        margin: 1px 3px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        cursor: pointer;
+        transition: opacity 0.15s;
+    }
+
+    .fc-event:hover {
+        opacity: 0.85;
+    }
+
+    .fc-h-event .fc-event-title-container {
+        padding-left: 2px;
+    }
+
+    /* Event title text — always dark/black */
+    .fc-event-title,
+    .fc-event-title-container,
+    .fc-sticky {
+        color: #111827 !important;
+    }
+
+    /* Lead events — soft red */
+    .event-lead {
+        background-color: #fef2f2 !important;
+        border-left: 3px solid #ef4444 !important;
+        color: #b91c1c !important;
+    }
+
+    /* Project events — soft purple */
+    .event-project {
+        background-color: #f5f3ff !important;
+        border-left: 3px solid #8b5cf6 !important;
+        color: #6d28d9 !important;
+    }
+
+    /* Task events — soft blue */
+    .event-task {
+        background-color: #eff6ff !important;
+        border-left: 3px solid #3b82f6 !important;
+        color: #1d4ed8 !important;
+    }
+
+    /* Fallback */
+    .fc-event:not(.event-lead):not(.event-project):not(.event-task) {
+        background-color: #ecfdf5 !important;
+        border-left: 3px solid #10b981 !important;
+        color: #065f46 !important;
+    }
+
+    /* "more" link */
+    .fc-daygrid-more-link {
+        color: #FF8C00 !important;
+        font-weight: 700 !important;
+        font-size: 11px !important;
+    }
+</style>
+
+<div class="calendar-wrapper">
+    <!-- Sidebar Removed for Full Screen View -->
+
+    <!-- Main Calendar -->
+    <main class="calendar-main">
+        <div id='calendar'></div>
+    </main>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var calendarEl = document.getElementById('calendar');
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'title',
+                center: '',
+                right: 'prev,next today dayGridMonth,timeGridWeek'
+            },
+            navLinks: true, // can click day/week names to navigate views
+            businessHours: true, // display business hours
+            dayMaxEvents: true, // allow "more" link when too many events
+            events: function (info, successCallback, failureCallback) {
+                fetch('/api/events/')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Apply styling classes based on title/type
+                        const styledEvents = data.map(event => {
+                            if (event.title.includes('📞')) {
+                                event.classNames = ['event-lead'];
+                            } else if (event.title.includes('🚀')) {
+                                event.classNames = ['event-project'];
+                            } else if (event.title.includes('✅')) {
+                                event.classNames = ['event-task'];
+                            }
+                            return event;
+                        });
+                        successCallback(styledEvents);
+                    });
+            },
+            eventClick: function (info) {
+                if (info.event.url) {
+                    window.open(info.event.url, "_self");
+                    info.jsEvent.preventDefault();
+                }
+            },
+            views: {
+                dayGridMonth: {
+                    titleFormat: { year: 'numeric', month: 'long' }
+                }
+            }
+        });
+        calendar.render();
+    });
+
+    // Simple Client-side Filter Mock (Reloads for now as simplified logic)
+    function toggleSource(type) {
+        // In a real implementation, we would refetch events or filter the client-side array
+        // For now, this is a placeholder for the UI interaction
+        console.log("Toggling " + type);
+    }
+</script>
+{% endblock %}

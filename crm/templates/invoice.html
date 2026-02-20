@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Invoice - {{ client.name }}</title>
+    <style>
+        @page {
+            size: a4 portrait;
+            margin: 2cm;
+
+            @frame footer_frame {
+                /* Another static Frame */
+                -pdf-frame-content: footerContent;
+                bottom: 1cm;
+                margin-left: 2cm;
+                margin-right: 2cm;
+                height: 1cm;
+            }
+        }
+
+        body {
+            font-family: Helvetica, sans-serif;
+            font-size: 12px;
+            color: #333;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1B3C53;
+            /* Navy */
+            text-transform: uppercase;
+        }
+
+        .company-subtitle {
+            font-size: 10px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .invoice-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #FF8C00;
+            /* Orange */
+            text-align: right;
+            text-transform: uppercase;
+        }
+
+        .meta-info {
+            text-align: right;
+            margin-top: 10px;
+            font-size: 10px;
+            color: #555;
+        }
+
+        .client-info {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-left: 4px solid #1B3C53;
+        }
+
+        .client-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #1B3C53;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+        }
+
+        th {
+            background-color: #1B3C53;
+            color: white;
+            padding: 8px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .pk-col {
+            width: 10%;
+        }
+
+        .desc-col {
+            width: 50%;
+        }
+
+        .date-col {
+            width: 20%;
+        }
+
+        .amount-col {
+            width: 20%;
+            text-align: right;
+        }
+
+        .total-section {
+            margin-top: 30px;
+            float: right;
+            width: 40%;
+        }
+
+        .total-row {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .total-label {
+            font-weight: bold;
+            display: inline-block;
+            width: 60%;
+        }
+
+        .total-value {
+            display: inline-block;
+            width: 35%;
+            text-align: right;
+        }
+
+        .grand-total {
+            font-size: 14px;
+            font-weight: bold;
+            color: #1B3C53;
+            border-top: 2px solid #1B3C53;
+            border-bottom: 2px solid #1B3C53;
+            padding: 10px 0;
+            margin-top: 10px;
+        }
+
+        .footer {
+            color: #777;
+            font-size: 9px;
+            text-align: center;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <div class="header">
+        <table style="border: none; margin-top: 0;">
+            <tr>
+                <td style="border: none; padding: 0; width: 60%;">
+                    {% if logo %}
+                    <img src="{{ logo }}" style="max-height: 80px; max-width: 250px; margin-bottom: 20px;">
+                    {% endif %}
+                    <div style="margin-top: 5px;">
+                        Dhaka, Bangladesh<br>
+                        contact@techvilo.com<br>
+                        +880 1234 567890
+                    </div>
+                </td>
+                <td style="border: none; padding: 0; width: 40%; text-align: right; vertical-align: top;">
+                    <div class="invoice-title">INVOICE</div>
+                    <div class="meta-info">
+                        <strong>Date:</strong> {% now "F j, Y" %}<br>
+                        <strong>Invoice #:</strong> INV-{{ client.id }}-{% now "Ymd" %}
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Client Info -->
+    <div class="client-info">
+        <div style="font-size: 10px; color: #777; text-transform: uppercase; margin-bottom: 5px;">Bill To:</div>
+        <div class="client-name">{{ client.company_name|default:client.name }}</div>
+        <div>{{ client.contact_info }}</div>
+        {% if client.email %}<div>{{ client.email }}</div>{% endif %}
+    </div>
+
+    <!-- Service/Project Details -->
+    <div style="margin-top: 30px;">
+        <h3 style="color: #1B3C53; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Services</h3>
+
+        <!-- Currently we summarize by Projects or Generic Service -->
+        <table>
+            <thead>
+                <tr>
+                    <th class="desc-col">Description</th>
+                    <th class="date-col">Project Deadline</th>
+                    <th class="amount-col">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for project in projects %}
+                <tr>
+                    <td>
+                        <strong>{{ project.project_name }}</strong><br>
+                        <span style="font-size: 10px; color: #666;">{{ project.description|truncatewords:10 }}</span>
+                    </td>
+                    <td>{{ project.deadline|date:"M j, Y" }}</td>
+                    <td class="amount-col">Included in Total</td>
+                    <!-- Note: Projects don't have individual prices in model yet, relying on Client.total_payable -->
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3">Professional Services: {{ client.services }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Financial Summary -->
+    <div class="total-section">
+        <div class="total-row">
+            <span class="total-label">Total Payable:</span>
+            <span class="total-value">{{ client.total_payable|floatformat:2 }} BDT</span>
+        </div>
+        <div class="total-row">
+            <span class="total-label">Paid Amount:</span>
+            <span class="total-value" style="color: green;">(-) {{ client.paid_amount|floatformat:2 }} BDT</span>
+        </div>
+        <div class="grand-total">
+            <span class="total-label">Balance Due:</span>
+            <span class="total-value" style="color: #d9534f;">{{ client.due_amount|floatformat:2 }} BDT</span>
+        </div>
+    </div>
+
+    <!-- Payment History (Optional) -->
+    {% if payments %}
+    <div style="margin-top: 150px;">
+        <h4 style="color: #666;">Recent Payments</h4>
+        <table style="width: 60%; margin-top: 5px; font-size: 10px;">
+            <tbody>
+                {% for payment in payments %}
+                <tr>
+                    <td style="padding: 4px; border:none;">{{ payment.date }}</td>
+                    <td style="padding: 4px; border:none;">{{ payment.description|default:"Payment Received" }}</td>
+                    <td style="padding: 4px; border:none; text-align: right;">{{ payment.amount|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Footer -->
+    <div id="footerContent" class="footer">
+        Thank you for your business! | Techvilo CRM generated invoice.
+    </div>
+
+</body>
+
+</html>
