@@ -29,7 +29,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-h=9ubjiyepmfg32+^fzh11v^2o*@ad@e9gemz6a3-ss)t2txpx')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+# Temporarily forcing True to debug the live 500/502 issue
+DEBUG = True
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 CSRF_TRUSTED_ORIGINS = [
@@ -87,7 +88,8 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600
+        conn_max_age=0,  # Recommended for transaction poolers (port 6543)
+        ssl_require=True if os.getenv('DATABASE_URL') else False
     )
 }
 
