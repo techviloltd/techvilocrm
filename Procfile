@@ -1,1 +1,1 @@
-web: gunicorn core.wsgi --log-file -
+敷㩢朠湵捩牯⁮潣敲眮杳⁩ⴭ潬ⵧ楦敬ⴠ਍
