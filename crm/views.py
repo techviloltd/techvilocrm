@@ -82,21 +82,21 @@ from .rls_utils import get_filtered_queryset
 # 3. Dashboard View
 @login_required
 def dashboard(request):
-    # KPIs
+    # 1. Base counts
     total_leads = get_filtered_queryset(request.user, Lead).count()
     total_clients = get_filtered_queryset(request.user, Client).count()
     active_projects = get_filtered_queryset(request.user, Project).filter(status='IN_PROGRESS').count()
     
-    # Financials (Filtered)
+    # 2. Financials & Recent Activity
     tx_qs = get_filtered_queryset(request.user, Transaction)
-    
-    total_income = tx_qs.filter(transaction_type='INCOME').aggregate(Sum('amount'))['amount__sum'] or 0
-    total_expense = tx_qs.filter(transaction_type='EXPENSE').aggregate(Sum('amount'))['amount__sum'] or 0
+    tx_totals = tx_qs.values('transaction_type').annotate(total=Sum('amount'))
+    total_income = 0
+    total_expense = 0
+    for item in tx_totals:
+        if item['transaction_type'] == 'INCOME': total_income = item['total'] or 0
+        if item['transaction_type'] == 'EXPENSE': total_expense = item['total'] or 0
     net_profit = total_income - total_expense
     
-    # Recent Activity (last 5 interactions for their leads/clients)
-    # Interaction doesn't have RLS helper yet, let's filter manually or add to helper. 
-    # For now, simplistic approach:
     if request.user.is_superuser or request.user.groups.filter(name='Manager').exists():
         recent_interactions = Interaction.objects.select_related('client', 'lead', 'created_by').order_by('-created_at')[:5]
     else:
@@ -104,14 +104,11 @@ def dashboard(request):
             client__assigned_to=request.user
         ).select_related('client', 'lead', 'created_by').order_by('-created_at')[:5]
 
-    
-    # Upcoming Deadlines (Projects & Tasks due within 7 days)
+    # 3. Deadlines
     today = timezone.now().date()
     next_week = today + datetime.timedelta(days=7)
-    
     upcoming_projects = get_filtered_queryset(request.user, Project).filter(deadline__range=[today, next_week]).order_by('deadline')
     
-    # Personal filtering for Tasks
     task_qs = get_filtered_queryset(request.user, Task)
     if not (request.user.is_superuser or request.user.groups.filter(name='Manager').exists()):
         task_qs = task_qs.filter(assigned_to=request.user)
@@ -120,124 +117,110 @@ def dashboard(request):
     overdue_tasks = task_qs.filter(due_date__lt=today, is_completed=False).order_by('due_date')
     overdue_count = overdue_tasks.count()
 
-    # Chart Data Preparation (using RLS)
+    # 4. Chart Data Preparation (Bulk)
+    # Lead Status
     lead_qs = get_filtered_queryset(request.user, Lead)
-    lead_status_data = list(lead_qs.values('status').annotate(count=Count('status')))
-    
-    # 1. Lead Status (Doughnut)
+    lead_status_data = lead_qs.values('status').annotate(count=Count('id'))
     lead_counts = {item['status']: item['count'] for item in lead_status_data}
-    lead_dataset = [
-        lead_counts.get('COLD', 0),
-        lead_counts.get('WARM', 0),
-        lead_counts.get('HOT', 0),
-        lead_counts.get('CONVERTED', 0)
-    ]
+    lead_dataset = [lead_counts.get('COLD', 0), lead_counts.get('WARM', 0), lead_counts.get('HOT', 0), lead_counts.get('CONVERTED', 0)]
 
-    # 2. Income vs Expense (Bar) - totals
-    income_expense_dataset = [float(total_income), float(total_expense)]
-
-    # 3. Sales Trend (Last 7 Days) - Line Chart
+    # Sales Trend (Last 7 Days)
     trend_labels = []
+    trend_data_map = { (today - datetime.timedelta(days=i)): 0 for i in range(7) }
+    trend_qs = tx_qs.filter(transaction_type='INCOME', date__gte=today - datetime.timedelta(days=6)).values('date').annotate(total=Sum('amount'))
+    for item in trend_qs:
+        if item['date'] in trend_data_map:
+            trend_data_map[item['date']] = float(item['total'] or 0)
+    
     trend_data = []
     for i in range(6, -1, -1):
         day = today - datetime.timedelta(days=i)
-        trend_labels.append(day.strftime('%a')) # Mon, Tue...
-        
-        # Filter transactions for this day
-        day_income = tx_qs.filter(
-            transaction_type='INCOME',
-            date=day
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-        trend_data.append(float(day_income))
+        trend_labels.append(day.strftime('%a'))
+        trend_data.append(trend_data_map[day])
 
-    # 4. Monthly Income vs Expense (last 6 months) — correct calendar month arithmetic
+    # Monthly Progress (Last 6 Months)
     import calendar as _cal
-    monthly_labels = []
-    monthly_income = []
-    monthly_expense = []
+    monthly_labels, monthly_income, monthly_expense = [], [], []
     for i in range(5, -1, -1):
-        # Go back i months correctly
+        target_date = today - datetime.timedelta(days=i*30) # Rough estimate for labels
         month = today.month - i
         year = today.year
-        while month <= 0:
-            month += 12
-            year -= 1
-
-        month_start = datetime.date(year, month, 1)
-        last_day = _cal.monthrange(year, month)[1]
-        # For current month use today as end, else use last day of month
-        month_end = today if i == 0 else datetime.date(year, month, last_day)
-
-        inc = tx_qs.filter(
-            transaction_type='INCOME',
-            date__gte=month_start,
-            date__lte=month_end
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-
-        exp = tx_qs.filter(
-            transaction_type='EXPENSE',
-            date__gte=month_start,
-            date__lte=month_end
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-
-        monthly_labels.append(month_start.strftime("%b %y"))  # e.g. Sep 25
+        while month <= 0: month += 12; year -= 1
+        m_start = datetime.date(year, month, 1)
+        m_end = datetime.date(year, month, _cal.monthrange(year, month)[1])
+        if i == 0: m_end = today
+        
+        m_tx = tx_qs.filter(date__gte=m_start, date__lte=m_end).values('transaction_type').annotate(total=Sum('amount'))
+        inc, exp = 0, 0
+        for item in m_tx:
+            if item['transaction_type'] == 'INCOME': inc = item['total'] or 0
+            if item['transaction_type'] == 'EXPENSE': exp = item['total'] or 0
+        
+        monthly_labels.append(m_start.strftime("%b %y"))
         monthly_income.append(float(inc))
         monthly_expense.append(float(exp))
 
-
-    # 5. KPI Widget — current month's targets for this user (or all staff if manager)
-    kpi_today = today
+    # 5. KPI Data (Optimized)
     is_manager = request.user.is_superuser or request.user.groups.filter(name='Manager').exists()
+    kpi_month_start = today.replace(day=1)
+    kpi_month_end = today.replace(day=_cal.monthrange(today.year, today.month)[1])
+    
+    kpi_targets = KPITarget.objects.filter(month=kpi_month_start)
+    if not is_manager:
+        kpi_targets = kpi_targets.filter(staff=request.user)
+    kpi_targets = kpi_targets.select_related('staff')
 
-    if is_manager:
-        kpi_targets_qs = KPITarget.objects.filter(
-            month__year=kpi_today.year,
-            month__month=kpi_today.month
-        ).select_related('staff')
-    else:
-        kpi_targets_qs = KPITarget.objects.filter(
-            staff=request.user,
-            month__year=kpi_today.year,
-            month__month=kpi_today.month
-        ).select_related('staff')
+    # Prep actuals in bulk for the month
+    staff_ids = [k.staff_id for k in kpi_targets]
+    
+    # Actuals mapping
+    def get_actuals_map(model, date_field, user_field, is_count=True):
+        filters = { f"{date_field}__month": today.month, f"{date_field}__year": today.year, f"{user_field}__in": staff_ids }
+        if model == Lead: filters['status'] = 'CONVERTED'
+        if model == Task: filters['is_completed'] = True
+        if model == Transaction: filters['transaction_type'] = 'INCOME'
+        
+        qs = model.objects.filter(**filters).values(user_field)
+        if is_count: res = qs.annotate(val=Count('id'))
+        else: res = qs.annotate(val=Sum('amount'))
+        return { item[user_field]: item['val'] for item in res }
+
+    leads_map = get_actuals_map(Lead, 'converted_at', 'assigned_to')
+    tasks_map = get_actuals_map(Task, 'due_date', 'assigned_to')
+    interactions_map = get_actuals_map(Interaction, 'created_at', 'created_by')
+    revenue_map = get_actuals_map(Transaction, 'date', 'created_by', is_count=False)
 
     kpi_widget_data = []
-    for kpi in kpi_targets_qs:
+    for kpi in kpi_targets:
+        uid = kpi.staff_id
+        act_l, act_t, act_i, act_r = leads_map.get(uid, 0), tasks_map.get(uid, 0), interactions_map.get(uid, 0), float(revenue_map.get(uid, 0))
+        
+        def calc_pct(a, t): 
+            if not t: return 100 if a else 0
+            return min(int((a / float(t)) * 100), 100)
+        
+        m_leads = {'label': '📞 Leads', 'actual': act_l, 'target': kpi.target_leads, 'pct': calc_pct(act_l, kpi.target_leads)}
+        m_tasks = {'label': '✅ Tasks', 'actual': act_t, 'target': kpi.target_tasks, 'pct': calc_pct(act_t, kpi.target_tasks)}
+        m_comms = {'label': '💬 Comms', 'actual': act_i, 'target': kpi.target_interactions, 'pct': calc_pct(act_i, kpi.target_interactions)}
+        m_rev   = {'label': '💰 Revenue', 'actual': int(act_r), 'target': int(kpi.target_revenue), 'pct': calc_pct(act_r, kpi.target_revenue)}
+        
+        overall = int((m_leads['pct'] + m_tasks['pct'] + m_comms['pct'] + m_rev['pct']) / 4)
+        
         kpi_widget_data.append({
             'username': kpi.staff.get_full_name() or kpi.staff.username,
-            'overall_pct': kpi.overall_pct(),
-            'metrics': [
-                {'label': '📞 Leads', 'actual': kpi.actual_leads(), 'target': kpi.target_leads, 'pct': kpi.leads_pct()},
-                {'label': '✅ Tasks', 'actual': kpi.actual_tasks(), 'target': kpi.target_tasks, 'pct': kpi.tasks_pct()},
-                {'label': '💬 Comms',  'actual': kpi.actual_interactions(), 'target': kpi.target_interactions, 'pct': kpi.interactions_pct()},
-                {'label': '💰 Revenue','actual': int(kpi.actual_revenue()), 'target': int(kpi.target_revenue), 'pct': kpi.revenue_pct()},
-            ]
+            'overall_pct': overall,
+            'metrics': [m_leads, m_tasks, m_comms, m_rev]
         })
 
     context = {
-        'total_leads': total_leads,
-        'total_clients': total_clients,
-        'active_projects': active_projects,
-        'total_income': total_income,
-        'total_expense': total_expense,
-        'net_profit': net_profit,
-        'recent_interactions': recent_interactions,
-        'upcoming_projects': upcoming_projects,
-        'upcoming_tasks': upcoming_tasks,
-        'overdue_tasks': overdue_tasks,
-        'overdue_count': overdue_count,
-        'is_manager': is_manager,
-        'kpi_widget_data': kpi_widget_data,
-        'kpi_month': kpi_today.strftime('%B %Y'),
-
-        # Chart Data
-        'lead_dataset': json.dumps(lead_dataset),
-        'income_expense_dataset': json.dumps(income_expense_dataset),
-        'trend_labels': json.dumps(trend_labels),
-        'trend_data': json.dumps(trend_data),
-        'monthly_labels': json.dumps(monthly_labels),
-        'monthly_income': json.dumps(monthly_income),
-        'monthly_expense': json.dumps(monthly_expense),
+        'total_leads': total_leads, 'total_clients': total_clients, 'active_projects': active_projects,
+        'total_income': total_income, 'total_expense': total_expense, 'net_profit': net_profit,
+        'recent_interactions': recent_interactions, 'upcoming_projects': upcoming_projects,
+        'upcoming_tasks': upcoming_tasks, 'overdue_tasks': overdue_tasks, 'overdue_count': overdue_count,
+        'is_manager': is_manager, 'kpi_widget_data': kpi_widget_data, 'kpi_month': today.strftime('%B %Y'),
+        'lead_dataset': json.dumps(lead_dataset), 'income_expense_dataset': json.dumps([float(total_income), float(total_expense)]),
+        'trend_labels': json.dumps(trend_labels), 'trend_data': json.dumps(trend_data),
+        'monthly_labels': json.dumps(monthly_labels), 'monthly_income': json.dumps(monthly_income), 'monthly_expense': json.dumps(monthly_expense),
     }
     return render(request, 'admin/dashboard.html', context)
 
