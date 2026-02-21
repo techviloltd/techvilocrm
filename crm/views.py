@@ -82,10 +82,16 @@ from .rls_utils import get_filtered_queryset
 # 3. Dashboard View
 @login_required
 def dashboard(request):
+    import time
+    start_time = time.time()
+    def log_time(label):
+        print(f"DEBUG: {label} took {time.time() - start_time:.4f}s")
+
     # 1. Base counts
     total_leads = get_filtered_queryset(request.user, Lead).count()
     total_clients = get_filtered_queryset(request.user, Client).count()
     active_projects = get_filtered_queryset(request.user, Project).filter(status='IN_PROGRESS').count()
+    log_time("Base counts")
     
     # 2. Financials & Recent Activity
     tx_qs = get_filtered_queryset(request.user, Transaction)
@@ -96,6 +102,7 @@ def dashboard(request):
         if item['transaction_type'] == 'INCOME': total_income = item['total'] or 0
         if item['transaction_type'] == 'EXPENSE': total_expense = item['total'] or 0
     net_profit = total_income - total_expense
+    log_time("Financials")
     
     if request.user.is_superuser or request.user.groups.filter(name='Manager').exists():
         recent_interactions = Interaction.objects.select_related('client', 'lead', 'created_by').order_by('-created_at')[:5]
@@ -103,6 +110,7 @@ def dashboard(request):
         recent_interactions = Interaction.objects.filter(
             client__assigned_to=request.user
         ).select_related('client', 'lead', 'created_by').order_by('-created_at')[:5]
+    log_time("Interactions")
 
     # 3. Deadlines
     today = timezone.now().date()
@@ -116,6 +124,7 @@ def dashboard(request):
     upcoming_tasks = task_qs.filter(due_date__range=[today, next_week], is_completed=False).order_by('due_date')
     overdue_tasks = task_qs.filter(due_date__lt=today, is_completed=False).order_by('due_date')
     overdue_count = overdue_tasks.count()
+    log_time("Deadlines")
 
     # 4. Chart Data Preparation (Bulk)
     # Lead Status
@@ -137,12 +146,12 @@ def dashboard(request):
         day = today - datetime.timedelta(days=i)
         trend_labels.append(day.strftime('%a'))
         trend_data.append(trend_data_map[day])
+    log_time("Charts Part 1")
 
     # Monthly Progress (Last 6 Months)
     import calendar as _cal
     monthly_labels, monthly_income, monthly_expense = [], [], []
     for i in range(5, -1, -1):
-        target_date = today - datetime.timedelta(days=i*30) # Rough estimate for labels
         month = today.month - i
         year = today.year
         while month <= 0: month += 12; year -= 1
@@ -159,6 +168,7 @@ def dashboard(request):
         monthly_labels.append(m_start.strftime("%b %y"))
         monthly_income.append(float(inc))
         monthly_expense.append(float(exp))
+    log_time("Charts Part 2")
 
     # 5. KPI Data (Optimized)
     is_manager = request.user.is_superuser or request.user.groups.filter(name='Manager').exists()
@@ -173,9 +183,12 @@ def dashboard(request):
     # Prep actuals in bulk for the month
     staff_ids = [k.staff_id for k in kpi_targets]
     
-    # Actuals mapping
+    # Actuals mapping (Using RANGE queries instead of slow __month/__year)
+    m_start = today.replace(day=1)
+    m_end_plus = (m_start + datetime.timedelta(days=32)).replace(day=1)
+
     def get_actuals_map(model, date_field, user_field, is_count=True):
-        filters = { f"{date_field}__month": today.month, f"{date_field}__year": today.year, f"{user_field}__in": staff_ids }
+        filters = { f"{date_field}__gte": m_start, f"{date_field}__lt": m_end_plus, f"{user_field}__in": staff_ids }
         if model == Lead: filters['status'] = 'CONVERTED'
         if model == Task: filters['is_completed'] = True
         if model == Transaction: filters['transaction_type'] = 'INCOME'
@@ -189,6 +202,7 @@ def dashboard(request):
     tasks_map = get_actuals_map(Task, 'due_date', 'assigned_to')
     interactions_map = get_actuals_map(Interaction, 'created_at', 'created_by')
     revenue_map = get_actuals_map(Transaction, 'date', 'created_by', is_count=False)
+    log_time("KPI Maps")
 
     kpi_widget_data = []
     for kpi in kpi_targets:
@@ -211,6 +225,7 @@ def dashboard(request):
             'overall_pct': overall,
             'metrics': [m_leads, m_tasks, m_comms, m_rev]
         })
+    log_time("KPI Loop")
 
     context = {
         'total_leads': total_leads, 'total_clients': total_clients, 'active_projects': active_projects,
@@ -222,6 +237,7 @@ def dashboard(request):
         'trend_labels': json.dumps(trend_labels), 'trend_data': json.dumps(trend_data),
         'monthly_labels': json.dumps(monthly_labels), 'monthly_income': json.dumps(monthly_income), 'monthly_expense': json.dumps(monthly_expense),
     }
+    log_time("Final Context")
     return render(request, 'admin/dashboard.html', context)
 
 # 4. Kanban Board

@@ -35,10 +35,13 @@ class TransactionAdmin(admin.ModelAdmin):
         except (AttributeError, KeyError):
             return response
 
-        metrics = {
-            'total_income': qs.filter(transaction_type='INCOME').aggregate(Sum('amount'))['amount__sum'] or 0,
-            'total_expense': qs.filter(transaction_type='EXPENSE').aggregate(Sum('amount'))['amount__sum'] or 0,
-        }
+        from django.db.models import Sum, Q
+        metrics = qs.aggregate(
+            total_income=Sum('amount', filter=Q(transaction_type='INCOME')),
+            total_expense=Sum('amount', filter=Q(transaction_type='EXPENSE'))
+        )
+        metrics['total_income'] = metrics['total_income'] or 0
+        metrics['total_expense'] = metrics['total_expense'] or 0
         metrics['net_profit'] = metrics['total_income'] - metrics['total_expense']
 
         response.context_data['summary'] = metrics
@@ -170,11 +173,24 @@ class ClientAdmin(admin.ModelAdmin):
         return mark_safe('<span style="color: #94a3b8;">0</span>')
 
     def changelist_view(self, request, extra_context=None):
-        # Use Transaction model (same source as Dashboard) for consistency
-        total_revenue = Transaction.objects.filter(transaction_type='INCOME').aggregate(Sum('amount'))['amount__sum'] or 0
-        total_expense = Transaction.objects.filter(transaction_type='EXPENSE').aggregate(Sum('amount'))['amount__sum'] or 0
-        total_payable = Client.objects.aggregate(Sum('total_payable'))['total_payable__sum'] or 0
-        total_paid = Client.objects.aggregate(Sum('paid_amount'))['paid_amount__sum'] or 0
+        import time
+        start = time.time()
+        # Optimized: Combine aggregates to reduce database RTT
+        from django.db.models import Q
+        
+        tx_stats = Transaction.objects.aggregate(
+            income=Sum('amount', filter=Q(transaction_type='INCOME')),
+            expense=Sum('amount', filter=Q(transaction_type='EXPENSE'))
+        )
+        client_stats = Client.objects.aggregate(
+            payable=Sum('total_payable'),
+            paid=Sum('paid_amount')
+        )
+        
+        total_revenue = tx_stats['income'] or 0
+        total_expense = tx_stats['expense'] or 0
+        total_payable = client_stats['payable'] or 0
+        total_paid = client_stats['paid'] or 0
         total_due = total_payable - total_paid
 
         # Monthly billing chart — group INCOME transactions by month
@@ -196,6 +212,7 @@ class ClientAdmin(admin.ModelAdmin):
         extra_context['chart_labels'] = chart_labels
         extra_context['chart_data'] = chart_data
 
+        print(f"DEBUG: Client changelist view metrics took {time.time() - start:.4f}s")
         return super().changelist_view(request, extra_context=extra_context)
 
     def get_queryset(self, request):
@@ -205,9 +222,12 @@ class ClientAdmin(admin.ModelAdmin):
         return qs.filter(assigned_to=request.user).distinct()
 
     def save_model(self, request, obj, form, change):
+        import time
+        start = time.time()
         super().save_model(request, obj, form, change)
         if not change and not obj.assigned_to.exists():
             obj.assigned_to.add(request.user)
+        print(f"DEBUG: Client save_model took {time.time() - start:.4f}s")
 
 # --- LEAD ADMIN: Conversion & Performance Chart ---
 @admin.register(Lead)
