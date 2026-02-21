@@ -417,6 +417,71 @@
         padding: 0 !important;
     }
 
+    /* ── Date/Time & Widget Alignment Fix ────────────────────────────── */
+    body.change-form p.datetime {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        gap: 12px !important;
+        margin: 0 !important;
+    }
+
+    body.change-form p.datetime input {
+        width: auto !important;
+        flex: 1 !important;
+        min-width: 160px !important;
+    }
+
+    .datetimeshortcuts {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        color: var(--star-blue) !important;
+        font-weight: 700 !important;
+        font-size: 11px !important;
+        white-space: nowrap !important;
+    }
+
+    .datetimeshortcuts a {
+        background: #f1f5f9 !important;
+        padding: 4px 10px !important;
+        border-radius: 5px !important;
+        text-decoration: none !important;
+        color: var(--star-blue) !important;
+        transition: all 0.2s;
+    }
+
+    .datetimeshortcuts a:hover {
+        background: var(--star-blue) !important;
+        color: #fff !important;
+    }
+
+    /* Improve Related Widget Wrapper (Search Icons) */
+    body.change-form .related-widget-wrapper {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+
+    body.change-form .related-widget-wrapper .related-lookup {
+        background: #f1f5f9 !important;
+        width: 38px !important;
+        height: 38px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 8px !important;
+        border: 1.5px solid var(--border-color) !important;
+        transition: all 0.2s;
+    }
+
+    body.change-form .related-widget-wrapper .related-lookup:hover {
+        border-color: var(--star-blue) !important;
+        color: var(--star-blue) !important;
+    }
+
     body.change-form .submit-row {
         display: none !important;
     }
