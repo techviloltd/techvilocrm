@@ -1059,13 +1059,20 @@
             var sideCol = document.createElement('div');
             sideCol.className = 'cf-sidebar';
 
-            // Distribution Logic: If many fieldsets, keep more in main col
-            var mainThreshold = fieldsets.length > 3 ? 2 : 1;
+            // Distribution Logic: Heavily favor the main column
+            var mainThreshold = 1;
+            if (fieldsets.length > 5) {
+                mainThreshold = 2; // Large forms: 2 in main, rest in sidebar
+            } else if (fieldsets.length >= 2) {
+                mainThreshold = fieldsets.length - 1; // Small forms: Leave only 1 in sidebar
+            } else {
+                mainThreshold = fieldsets.length; // Extra small: All in main
+            }
 
-            // First 1 or 2 fieldsets → main cards
+            // First N fieldsets → main cards
             fieldsets.slice(0, mainThreshold).forEach(function (fs, i) {
                 var fsHeading = fs.querySelector('h2');
-                var fsTitle = fsHeading ? fsHeading.textContent.trim() : 'Primary Information';
+                var fsTitle = fsHeading ? fsHeading.textContent.trim() : 'General Information';
                 var card = document.createElement('div');
                 card.className = 'cf-card';
                 card.innerHTML = '<div class="cf-card-head"><div class="ci">📋</div><span>' + fsTitle + '</span></div>';
@@ -1076,7 +1083,7 @@
             // Inline groups → main col
             inlineGroups.forEach(function (ig) {
                 var title = ig.querySelector('h2');
-                var titleText = title ? title.textContent.trim() : 'Related Information';
+                var titleText = title ? title.textContent.trim() : 'Related Items';
                 var card = document.createElement('div');
                 card.className = 'cf-card';
                 card.innerHTML = '<div class="cf-card-head"><div class="ci">💬</div><span>' + titleText + '</span></div>';
@@ -1085,19 +1092,25 @@
             });
 
             // Remaining fieldsets → sidebar
-            var icons = ['📊', '📅', '🏷️', '🔖', '⚙️', '🔒'];
+            var icons = ['📊', '📅', '🏷️', '🔖', '⚙️', '🔒', '📌'];
             fieldsets.slice(mainThreshold).forEach(function (fs, i) {
                 var fsHeading = fs.querySelector('h2');
-                var fsTitle = fsHeading ? fsHeading.textContent.trim() : 'Settings';
+                var fsTitle = fsHeading ? fsHeading.textContent.trim() : 'Additional info';
                 var card = document.createElement('div');
                 card.className = 'cf-card';
-                card.innerHTML = '<div class="cf-card-head"><div class="ci">' + (icons[i] || '📌') + '</div><span>' + fsTitle + '</span></div>';
+                card.innerHTML = '<div class="cf-card-head"><div class="ci">' + (icons[i] || '�') + '</div><span>' + fsTitle + '</span></div>';
                 card.appendChild(fs);
                 sideCol.appendChild(card);
             });
 
             grid.appendChild(mainCol);
-            grid.appendChild(sideCol);
+
+            // Only add sidebar if it has content
+            if (sideCol.children.length > 0) {
+                grid.appendChild(sideCol);
+            } else {
+                grid.style.gridTemplateColumns = '1fr'; // Full width if no sidebar
+            }
 
             // Insert grid where the div wrapper was
             var formDiv = form.querySelector(':scope > div');
