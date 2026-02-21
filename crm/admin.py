@@ -177,52 +177,31 @@ class ClientAdmin(admin.ModelAdmin):
         from django.core.cache import cache
         start = time.time()
         
-        # Cache global metrics for 15 minutes to prevent heavy DB scans on every refresh
-        cache_key = "admin_client_metrics"
+        # Simple aggregated metrics (Cached for 15 min)
+        cache_key = "admin_client_metrics_simple"
         metrics = cache.get(cache_key)
         
         if not metrics:
             from django.db.models import Q
-            tx_stats = Transaction.objects.aggregate(
-                income=Sum('amount', filter=Q(transaction_type='INCOME')),
-                expense=Sum('amount', filter=Q(transaction_type='EXPENSE'))
-            )
-            client_stats = Client.objects.aggregate(
+            stats = Client.objects.aggregate(
                 payable=Sum('total_payable'),
                 paid=Sum('paid_amount')
             )
-            
-            total_revenue = tx_stats['income'] or 0
-            total_expense = tx_stats['expense'] or 0
-            total_payable = client_stats['payable'] or 0
-            total_paid = client_stats['paid'] or 0
-            
-            # Monthly billing chart
-            revenue_data = (
-                Transaction.objects
-                .filter(transaction_type='INCOME')
-                .annotate(month=TruncMonth('date'))
-                .values('month')
-                .annotate(total=Sum('amount'))
-                .order_by('month')
-            )
-            chart_labels = [entry['month'].strftime('%b %Y') for entry in revenue_data]
-            chart_data = [float(entry['total']) for entry in revenue_data]
+            total_payable = stats['payable'] or 0
+            total_paid = stats['paid'] or 0
             
             metrics = {
-                'total_revenue': total_revenue,
-                'total_received': total_revenue - total_expense,
+                'total_revenue': total_payable,
+                'total_received': total_paid,
                 'total_due': total_payable - total_paid,
-                'chart_labels': chart_labels,
-                'chart_data': chart_data
             }
-            cache.set(cache_key, metrics, 900) # 15 minutes
-            print("DEBUG: Client admin metrics calculated and cached.")
-        else:
-            print("DEBUG: Client admin metrics retrieved from cache.")
-
+            cache.set(cache_key, metrics, 900)
+        
         extra_context = extra_context or {}
         extra_context.update(metrics)
+        # Chart data removed from list page to prevent timeouts
+        extra_context['chart_labels'] = []
+        extra_context['chart_data'] = []
 
         print(f"DEBUG: Client changelist view metrics took {time.time() - start:.4f}s")
         return super().changelist_view(request, extra_context=extra_context)
