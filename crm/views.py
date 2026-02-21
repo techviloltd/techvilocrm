@@ -80,12 +80,23 @@ def generate_invoice_pdf(request, client_id):
 from .rls_utils import get_filtered_queryset
 
 # 3. Dashboard View
+from django.core.cache import cache
+
 @login_required
 def dashboard(request):
     import time
     start_time = time.time()
     def log_time(label):
         print(f"DEBUG: {label} took {time.time() - start_time:.4f}s")
+
+    # Generate a unique cache key based on user and manager status
+    is_manager = request.user.is_superuser or request.user.groups.filter(name='Manager').exists()
+    cache_key = f"dashboard_data_{request.user.id}_{is_manager}"
+    cached_context = cache.get(cache_key)
+    
+    if cached_context:
+        log_time("Retrieved from Cache")
+        return render(request, 'admin/dashboard.html', cached_context)
 
     # 1. Base counts
     total_leads = get_filtered_queryset(request.user, Lead).count()
@@ -104,7 +115,7 @@ def dashboard(request):
     net_profit = total_income - total_expense
     log_time("Financials")
     
-    if request.user.is_superuser or request.user.groups.filter(name='Manager').exists():
+    if is_manager:
         recent_interactions = Interaction.objects.select_related('client', 'lead', 'created_by').order_by('-created_at')[:5]
     else:
         recent_interactions = Interaction.objects.filter(
@@ -118,7 +129,7 @@ def dashboard(request):
     upcoming_projects = get_filtered_queryset(request.user, Project).filter(deadline__range=[today, next_week]).order_by('deadline')
     
     task_qs = get_filtered_queryset(request.user, Task)
-    if not (request.user.is_superuser or request.user.groups.filter(name='Manager').exists()):
+    if not is_manager:
         task_qs = task_qs.filter(assigned_to=request.user)
 
     upcoming_tasks = task_qs.filter(due_date__range=[today, next_week], is_completed=False).order_by('due_date')
@@ -127,7 +138,6 @@ def dashboard(request):
     log_time("Deadlines")
 
     # 4. Chart Data Preparation (Bulk)
-    # Lead Status
     lead_qs = get_filtered_queryset(request.user, Lead)
     lead_status_data = lead_qs.values('status').annotate(count=Count('id'))
     lead_counts = {item['status']: item['count'] for item in lead_status_data}
@@ -170,20 +180,14 @@ def dashboard(request):
         monthly_expense.append(float(exp))
     log_time("Charts Part 2")
 
-    # 5. KPI Data (Optimized)
-    is_manager = request.user.is_superuser or request.user.groups.filter(name='Manager').exists()
+    # 5. KPI Data
     kpi_month_start = today.replace(day=1)
-    kpi_month_end = today.replace(day=_cal.monthrange(today.year, today.month)[1])
-    
     kpi_targets = KPITarget.objects.filter(month=kpi_month_start)
     if not is_manager:
         kpi_targets = kpi_targets.filter(staff=request.user)
     kpi_targets = kpi_targets.select_related('staff')
 
-    # Prep actuals in bulk for the month
     staff_ids = [k.staff_id for k in kpi_targets]
-    
-    # Actuals mapping (Using RANGE queries instead of slow __month/__year)
     m_start = today.replace(day=1)
     m_end_plus = (m_start + datetime.timedelta(days=32)).replace(day=1)
 
@@ -237,8 +241,27 @@ def dashboard(request):
         'trend_labels': json.dumps(trend_labels), 'trend_data': json.dumps(trend_data),
         'monthly_labels': json.dumps(monthly_labels), 'monthly_income': json.dumps(monthly_income), 'monthly_expense': json.dumps(monthly_expense),
     }
-    log_time("Final Context")
+
+    # Store in cache for 5 minutes (300 seconds)
+    cache.set(cache_key, context, 300)
+    log_time("Final Context & Cached")
     return render(request, 'admin/dashboard.html', context)
+
+def health_check(request):
+    """Diagnostic view to verify database connectivity."""
+    from django.db import connection
+    status = "Unknown"
+    details = ""
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+        status = "Green"
+    except Exception as e:
+        status = "Red"
+        details = str(e)
+    
+    return HttpResponse(f"Database Status: {status}<br>Details: {details if details else 'Connection OK'}")
 
 # 4. Kanban Board
 @login_required

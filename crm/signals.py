@@ -1,12 +1,38 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from .models import Client, Project
+from django.core.cache import cache
+from .models import Client, Project, Lead, Transaction
 from .utils import send_staff_notification
+
+def clear_dashboard_cache(instance):
+    """Clear all dashboard-related caches when data changes."""
+    # We use a pattern to clear relevant caches. 
+    # Since locmem doesn't support clear by pattern easily, we can just clear everything
+    # or specific keys if we know them. For simplicity and reliability:
+    cache.clear()
+    print("DEBUG: Dashboard cache cleared due to data change.")
+
+@receiver([post_save, post_delete], sender=Client)
+def on_client_change(sender, instance, **kwargs):
+    clear_dashboard_cache(instance)
+
+@receiver([post_save, post_delete], sender=Project)
+def on_project_change(sender, instance, **kwargs):
+    clear_dashboard_cache(instance)
+
+@receiver([post_save, post_delete], sender=Lead)
+def on_lead_change(sender, instance, **kwargs):
+    clear_dashboard_cache(instance)
+
+@receiver([post_save, post_delete], sender=Transaction)
+def on_transaction_change(sender, instance, **kwargs):
+    clear_dashboard_cache(instance)
 
 @receiver(post_save, sender=Client)
 def notify_new_client(sender, instance, created, **kwargs):
     if created:
         subject = f"🚀 New Client Joined: {instance.name}"
+        # ... (rest of the notification logic remains the same)
         
         # Plain text fallback
         message = f"""
