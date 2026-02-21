@@ -150,9 +150,9 @@ class DocumentInline(admin.TabularInline):
 # --- CLIENT ADMIN: Financials & Revenue Chart ---
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ('name', 'company_name', 'active_projects_count', 'total_payable', 'paid_amount', 'due_amount', 'get_assigned_staff', 'download_invoice')
+    list_display = ('name', 'company_name', 'get_active_projects_count', 'total_payable', 'paid_amount', 'due_amount', 'get_assigned_staff', 'download_invoice')
     search_fields = ('name', 'company_name')
-    readonly_fields = ('paid_amount',) # Managed by signals now
+    readonly_fields = ('paid_amount',) 
     filter_horizontal = ('assigned_to',)
     change_list_template = "admin/client_changelist.html"
     inlines = [InteractionInline, ProjectInline, TransactionInline, DocumentInline] # Added Projects
@@ -166,57 +166,75 @@ class ClientAdmin(admin.ModelAdmin):
         return ", ".join([user.username for user in obj.assigned_to.all()])
 
     @admin.display(description="Active Projects")
-    def active_projects_count(self, obj):
-        count = obj.projects.exclude(status='COMPLETED').count()
+    def get_active_projects_count(self, obj):
+        count = getattr(obj, 'active_projects_count_annotated', 0)
         if count > 0:
             return format_html('<span style="background-color: #3b82f6; color: white; padding: 2px 8px; border-radius: 12px; font-weight: bold;">{}</span>', count)
         return mark_safe('<span style="color: #94a3b8;">0</span>')
 
     def changelist_view(self, request, extra_context=None):
         import time
+        from django.core.cache import cache
         start = time.time()
-        # Optimized: Combine aggregates to reduce database RTT
-        from django.db.models import Q
         
-        tx_stats = Transaction.objects.aggregate(
-            income=Sum('amount', filter=Q(transaction_type='INCOME')),
-            expense=Sum('amount', filter=Q(transaction_type='EXPENSE'))
-        )
-        client_stats = Client.objects.aggregate(
-            payable=Sum('total_payable'),
-            paid=Sum('paid_amount')
-        )
+        # Cache global metrics for 15 minutes to prevent heavy DB scans on every refresh
+        cache_key = "admin_client_metrics"
+        metrics = cache.get(cache_key)
         
-        total_revenue = tx_stats['income'] or 0
-        total_expense = tx_stats['expense'] or 0
-        total_payable = client_stats['payable'] or 0
-        total_paid = client_stats['paid'] or 0
-        total_due = total_payable - total_paid
-
-        # Monthly billing chart — group INCOME transactions by month
-        revenue_data = (
-            Transaction.objects
-            .filter(transaction_type='INCOME')
-            .annotate(month=TruncMonth('date'))
-            .values('month')
-            .annotate(total=Sum('amount'))
-            .order_by('month')
-        )
-        chart_labels = [entry['month'].strftime('%b %Y') for entry in revenue_data]
-        chart_data = [float(entry['total']) for entry in revenue_data]
+        if not metrics:
+            from django.db.models import Q
+            tx_stats = Transaction.objects.aggregate(
+                income=Sum('amount', filter=Q(transaction_type='INCOME')),
+                expense=Sum('amount', filter=Q(transaction_type='EXPENSE'))
+            )
+            client_stats = Client.objects.aggregate(
+                payable=Sum('total_payable'),
+                paid=Sum('paid_amount')
+            )
+            
+            total_revenue = tx_stats['income'] or 0
+            total_expense = tx_stats['expense'] or 0
+            total_payable = client_stats['payable'] or 0
+            total_paid = client_stats['paid'] or 0
+            
+            # Monthly billing chart
+            revenue_data = (
+                Transaction.objects
+                .filter(transaction_type='INCOME')
+                .annotate(month=TruncMonth('date'))
+                .values('month')
+                .annotate(total=Sum('amount'))
+                .order_by('month')
+            )
+            chart_labels = [entry['month'].strftime('%b %Y') for entry in revenue_data]
+            chart_data = [float(entry['total']) for entry in revenue_data]
+            
+            metrics = {
+                'total_revenue': total_revenue,
+                'total_received': total_revenue - total_expense,
+                'total_due': total_payable - total_paid,
+                'chart_labels': chart_labels,
+                'chart_data': chart_data
+            }
+            cache.set(cache_key, metrics, 900) # 15 minutes
+            print("DEBUG: Client admin metrics calculated and cached.")
+        else:
+            print("DEBUG: Client admin metrics retrieved from cache.")
 
         extra_context = extra_context or {}
-        extra_context['total_revenue'] = total_revenue
-        extra_context['total_received'] = total_revenue - total_expense  # net income
-        extra_context['total_due'] = total_due
-        extra_context['chart_labels'] = chart_labels
-        extra_context['chart_data'] = chart_data
+        extra_context.update(metrics)
 
         print(f"DEBUG: Client changelist view metrics took {time.time() - start:.4f}s")
         return super().changelist_view(request, extra_context=extra_context)
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
+        from django.db.models import Count, Q
+        qs = super().get_queryset(request).prefetch_related('assigned_to')
+        # Annotate active projects count to avoid N+1 queries in list display
+        qs = qs.annotate(
+            active_projects_count_annotated=Count('projects', filter=~Q(projects__status='COMPLETED'))
+        )
+        
         if request.user.is_superuser or request.user.groups.filter(name='Manager').exists():
             return qs 
         return qs.filter(assigned_to=request.user).distinct()
@@ -330,7 +348,7 @@ class LeadAdmin(admin.ModelAdmin):
         return super().changelist_view(request, extra_context=extra_context)
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
+        qs = super().get_queryset(request).select_related('assigned_to')
         if request.user.is_superuser or request.user.groups.filter(name='Manager').exists():
             return qs
         return qs.filter(assigned_to=request.user)
