@@ -1059,17 +1059,24 @@
             var sideCol = document.createElement('div');
             sideCol.className = 'cf-sidebar';
 
-            // First fieldset → main card
-            var mainCard = document.createElement('div');
-            mainCard.className = 'cf-card';
-            mainCard.innerHTML = '<div class="cf-card-head"><div class="ci">📋</div><span>Lead Details</span></div>';
-            mainCard.appendChild(fieldsets[0]);
-            mainCol.appendChild(mainCard);
+            // Distribution Logic: If many fieldsets, keep more in main col
+            var mainThreshold = fieldsets.length > 3 ? 2 : 1;
+
+            // First 1 or 2 fieldsets → main cards
+            fieldsets.slice(0, mainThreshold).forEach(function (fs, i) {
+                var fsHeading = fs.querySelector('h2');
+                var fsTitle = fsHeading ? fsHeading.textContent.trim() : 'Primary Information';
+                var card = document.createElement('div');
+                card.className = 'cf-card';
+                card.innerHTML = '<div class="cf-card-head"><div class="ci">📋</div><span>' + fsTitle + '</span></div>';
+                card.appendChild(fs);
+                mainCol.appendChild(card);
+            });
 
             // Inline groups → main col
             inlineGroups.forEach(function (ig) {
                 var title = ig.querySelector('h2');
-                var titleText = title ? title.textContent.trim() : 'Related';
+                var titleText = title ? title.textContent.trim() : 'Related Information';
                 var card = document.createElement('div');
                 card.className = 'cf-card';
                 card.innerHTML = '<div class="cf-card-head"><div class="ci">💬</div><span>' + titleText + '</span></div>';
@@ -1077,11 +1084,11 @@
                 mainCol.appendChild(card);
             });
 
-            // Remaining fieldsets (2nd+) → sidebar
-            var icons = ['📊', '📅', '🏷️', '🔖'];
-            fieldsets.slice(1).forEach(function (fs, i) {
+            // Remaining fieldsets → sidebar
+            var icons = ['📊', '📅', '🏷️', '🔖', '⚙️', '🔒'];
+            fieldsets.slice(mainThreshold).forEach(function (fs, i) {
                 var fsHeading = fs.querySelector('h2');
-                var fsTitle = fsHeading ? fsHeading.textContent.trim() : 'Details';
+                var fsTitle = fsHeading ? fsHeading.textContent.trim() : 'Settings';
                 var card = document.createElement('div');
                 card.className = 'cf-card';
                 card.innerHTML = '<div class="cf-card-head"><div class="ci">' + (icons[i] || '📌') + '</div><span>' + fsTitle + '</span></div>';
