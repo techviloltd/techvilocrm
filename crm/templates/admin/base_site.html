@@ -25,7 +25,7 @@
         --sidebar-width: 260px;
         --header-height: 60px;
         --font-main: 'Manrope', sans-serif;
-        --star-blue: #1f3bb3;
+        --star-blue: #000000;
         --star-bg: #f4f5f7;
         --sidebar-bg: #ffffff;
         --text-color: #1f1f1f;
@@ -76,7 +76,7 @@
         border-bottom: 1px solid var(--border-color);
         font-weight: 800;
         font-size: 22px;
-        color: var(--star-blue);
+        color: #000000;
         letter-spacing: -0.5px;
     }
 
@@ -91,27 +91,38 @@
         margin-bottom: 5px;
     }
 
+    /* Sidebar Link Reset */
+    .saas-sidebar .nav-link,
+    .saas-sidebar .nav-link i,
+    .saas-sidebar .nav-link:link,
+    .saas-sidebar .nav-link:visited {
+        color: #000000 !important;
+    }
+
     .nav-link {
         display: flex;
         align-items: center;
         padding: 12px 25px;
-        color: var(--text-muted);
         text-decoration: none !important;
         font-size: 14px;
-        font-weight: 500;
+        font-weight: 600;
         transition: all 0.3s ease;
         border-left: 3px solid transparent;
     }
 
-    .nav-link:hover {
-        color: var(--star-blue);
-        background: #f8f9fa;
+    .saas-sidebar .nav-link:hover,
+    .saas-sidebar .nav-link:hover i,
+    .saas-sidebar .nav-link.active,
+    .saas-sidebar .nav-link.active i,
+    .saas-sidebar .nav-link:active,
+    .saas-sidebar .nav-link:focus {
+        color: #ff0000 !important;
+        background: #fff5f5 !important;
+        text-decoration: none !important;
     }
 
-    .nav-link.active {
-        color: var(--star-blue);
-        background: #f8f9fa;
-        border-left-color: var(--star-blue);
+    .saas-sidebar .nav-link.active {
+        border-left-color: #ff0000 !important;
         font-weight: 700;
     }
 
@@ -122,7 +133,7 @@
     }
 
     .menu-title {
-        color: #bfaecb;
+        color: #fc6602;
         /* Muted purple/gray */
         font-size: 12px;
         text-transform: uppercase;
@@ -673,11 +684,26 @@
         width: 100% !important;
     }
 
+    /* Universal Border Removal for List Section */
+    body.change-list #changelist div,
+    body.change-list #changelist table,
+    body.change-list #changelist thead,
+    body.change-list #changelist tbody,
+    body.change-list #changelist tr,
+    body.change-list #changelist th,
+    body.change-list #changelist td {
+        border-bottom: none !important;
+        border-top: none !important;
+        border-left: none !important;
+        border-right: none !important;
+        box-shadow: none !important;
+    }
+
     /* Toolbar (Search) Modernization */
     body.change-list #toolbar {
         background: #fff;
         padding: 25px 30px !important;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: none !important;
         margin: 0 !important;
         display: flex;
         align-items: center;
@@ -740,7 +766,7 @@
     body.change-list .actions {
         padding: 18px 30px !important;
         background: #fff !important;
-        border-bottom: 1px solid #f1f5f9 !important;
+        border-bottom: none !important;
         font-family: var(--font-main) !important;
         font-size: 13px !important;
         font-weight: 600 !important;
@@ -787,7 +813,7 @@
         text-transform: uppercase !important;
         letter-spacing: 0.8px !important;
         color: #64748b !important;
-        border-bottom: 2px solid #e2e8f0 !important;
+        border-bottom: none !important;
         text-align: left !important;
         vertical-align: middle !important;
     }
@@ -808,7 +834,7 @@
         font-weight: 500 !important;
         color: #1e293b !important;
         vertical-align: middle !important;
-        border-bottom: 1px solid #f1f5f9 !important;
+        border: none !important;
         transition: background 0.15s;
     }
 
@@ -835,7 +861,7 @@
     }
 
     body.change-list a:hover {
-        text-decoration: underline !important;
+        text-decoration: none !important;
     }
 
     /* Modern Custom Checkboxes */
@@ -914,7 +940,8 @@
     body.change-list .paginator {
         padding: 25px 30px !important;
         background: #fff !important;
-        border-top: 1px solid #f1f5f9 !important;
+        border-top: none !important;
+        border-bottom: none !important;
         font-weight: 700 !important;
         color: var(--text-muted) !important;
         font-size: 13px !important;
@@ -1077,7 +1104,7 @@
 {{ block.super }}
 <div class="saas-sidebar">
     <div class="brand-logo">
-        Techvilo<span style="color: var(--text-color);">CRM</span>
+        <img src="{% static 'logo.jpg' %}" alt="Logo" style="height: 35px; border-radius: 6px;">
     </div>
 
     <div class="nav-menu">

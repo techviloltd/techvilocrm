@@ -3,7 +3,7 @@ services:
     name: techvilocrm
     runtime: python
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    startCommand: gunicorn core.wsgi
+    startCommand: python manage.py migrate --noinput && gunicorn core.wsgi
     envVars:
       - key: DEBUG
         value: "False"

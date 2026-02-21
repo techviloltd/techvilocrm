@@ -1,0 +1,292 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+<style>
+    /* Reset and Typography */
+    html,
+    body.login {
+        background: #f4f5f7 !important;
+        font-family: 'Manrope', sans-serif !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    body.login {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+    }
+
+    /* Hide standard header/sidebar on login page but KEEP container for content */
+    #header,
+    .saas-sidebar,
+    .breadcrumbs {
+        display: none !important;
+    }
+
+    /* Reset container and content for centering */
+    #container,
+    #content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        background: transparent !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-height: 100vh !important;
+    }
+
+    /* Login Container */
+    .login-container {
+        width: 100%;
+        max-width: 800px;
+        padding: 20px;
+        animation: fadeIn 0.8s ease-out;
+    }
+
+    .login-card {
+        background: #ffffff;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.01);
+        padding: 55px 60px;
+        text-align: center;
+    }
+
+    .login-header {
+        margin-bottom: 35px;
+    }
+
+    .login-header img {
+        height: 40px;
+        margin-bottom: 20px;
+        border-radius: 6px;
+    }
+
+    .login-header h1 {
+        font-size: 24px;
+        font-weight: 800;
+        color: #1f1f1f;
+        margin: 0;
+        letter-spacing: -0.5px;
+    }
+
+    .login-header p {
+        color: #8f92a1;
+        font-size: 14px;
+        font-weight: 500;
+        margin-top: 8px;
+    }
+
+    /* Form Styles */
+    form {
+        text-align: left;
+    }
+
+    .form-row {
+        margin-bottom: 24px;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+    }
+
+    .form-row label {
+        display: block !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        color: #1f3bb3 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.8px !important;
+        margin-bottom: 8px !important;
+        padding-left: 2px !important;
+    }
+
+    .form-row input[type="text"],
+    .form-row input[type="password"] {
+        width: 100% !important;
+        height: 52px !important;
+        background: #f8fafc !important;
+        border: 1.5px solid #e2e8f2 !important;
+        border-radius: 12px !important;
+        padding: 0 18px !important;
+        font-size: 15px !important;
+        font-weight: 500 !important;
+        color: #1f1f1f !important;
+        transition: all 0.3s ease !important;
+        box-sizing: border-box !important;
+        outline: none !important;
+    }
+
+    .form-row input:focus {
+        background: #ffffff !important;
+        border-color: #1f3bb3 !important;
+        box-shadow: 0 0 0 4px rgba(31, 59, 179, 0.1) !important;
+    }
+
+    /* Error Messages */
+    .errornote {
+        background: #fff5f5;
+        border-radius: 10px;
+        padding: 12px 16px;
+        color: #e53e3e;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 25px;
+        border: 1px solid #fed7d7;
+        text-align: left;
+    }
+
+    .errorlist {
+        margin: 0 0 10px 0;
+        padding: 0;
+        list-style: none;
+        color: #e53e3e;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    /* Submit Button */
+    .submit-row {
+        margin-top: 35px !important;
+        display: block !important;
+        text-align: center !important;
+    }
+
+    .submit-row input[type="submit"] {
+        width: 100% !important;
+        height: 54px !important;
+        background: #1f3bb3 !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 12px !important;
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        cursor: pointer !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 4px 15px rgba(31, 59, 179, 0.2) !important;
+    }
+
+    .submit-row input[type="submit"]:hover {
+        background: #1a3299 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(31, 59, 179, 0.3) !important;
+    }
+
+    .submit-row input[type="submit"]:active {
+        transform: translateY(0);
+    }
+
+    /* Footer Links */
+    .password-reset-link {
+        display: block;
+        margin-top: 25px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #8f92a1;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+
+    .password-reset-link:hover {
+        color: #1f3bb3;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Mobile Adjustments */
+    @media (max-width: 480px) {
+        .login-card {
+            padding: 35px 25px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block bodyclass %}{{ block.super }} login{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <img src="{% static 'logo.jpg' %}" alt="Techvilo CRM Logo">
+            <h1>Welcome Genius</h1>
+            <p>Please enter your credentials to login</p>
+        </div>
+
+        {% if form.errors and not form.non_field_errors %}
+        <p class="errornote">
+            {% if form.errors.items|length == 1 %}{% translate "Please correct the error below." %}{% else %}{%
+            translate "Please correct the errors below." %}{% endif %}
+        </p>
+        {% endif %}
+
+        {% if form.non_field_errors %}
+        {% for error in form.non_field_errors %}
+        <p class="errornote">
+            {{ error }}
+        </p>
+        {% endfor %}
+        {% endif %}
+
+        <form action="{{ app_path }}" method="post" id="login-form">{% csrf_token %}
+            <div class="form-row">
+                {{ form.username.errors }}
+                <label for="id_username">{% translate 'Username' %}</label>
+                {{ form.username }}
+            </div>
+            <div class="form-row">
+                {{ form.password.errors }}
+                <label for="id_password">{% translate 'Password' %}</label>
+                <div style="position: relative;">
+                    {{ form.password }}
+                    <i class="fas fa-eye-slash" id="togglePassword"
+                        style="position: absolute; right: 18px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #8f92a1; font-size: 18px; z-index: 10;"></i>
+                </div>
+                <input type="hidden" name="next" value="{{ next }}">
+            </div>
+
+            <div class="submit-row">
+                <input type="submit" value="{% translate 'Log in' %}">
+            </div>
+        </form>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const togglePassword = document.querySelector('#togglePassword');
+                const passwordField = document.querySelector('#id_password');
+
+                if (togglePassword && passwordField) {
+                    togglePassword.addEventListener('click', function () {
+                        const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+                        passwordField.setAttribute('type', type);
+                        this.classList.toggle('fa-eye');
+                        this.classList.toggle('fa-eye-slash');
+                    });
+                }
+            });
+        </script>
+
+        {% url 'admin_password_reset' as password_reset_url %}
+        {% if password_reset_url %}
+        <div class="password-reset-link">
+            <a href="{{ password_reset_url }}">{% translate 'Forgotten your password or username?' %}</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
